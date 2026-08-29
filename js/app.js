@@ -560,6 +560,19 @@ async function init() {
   // Hent covers i baggrunden og opdatér løbende
   covers = loadCoverCache();
   resolveCovers(ALBUMS, updated => { covers = updated; render(); });
+
+  // Med sky-backend: hent seneste version, når fanen får fokus igen
+  // (så samlingen følger med mellem fx telefon og computer)
+  if (Storage.isRemote) {
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState !== "visible") return;
+      const fresh = await Storage.load();
+      if (JSON.stringify(fresh) !== JSON.stringify(state)) {
+        state = fresh;
+        render();
+      }
+    });
+  }
 }
 
 init();

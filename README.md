@@ -20,18 +20,42 @@ Lige nu i browserens `localStorage` — det virker med det samme og overlever, a
 browseren lukkes (i modsætning til `sessionStorage`). Data er altså **pr. browser
 pr. enhed**; brug backup-knapperne til at flytte samlingen mellem enheder.
 
-### Skift til Supabase senere
+### Skift til Supabase (5 minutter)
 
 Hele appen taler kun med `Storage.load()` / `Storage.save()` i `js/storage.js`,
-så skiftet er tre små skridt (beskrevet i toppen af filen):
+så skiftet kræver ingen ændringer i resten af koden:
 
-1. Opret et Supabase-projekt og en tabel `collection` med kolonnerne
-   `id (text, primary key)`, `data (jsonb)`, `updated_at (timestamptz)`.
-2. Indsæt `SUPABASE_URL` og `SUPABASE_ANON_KEY` i `js/storage.js`.
-3. Sæt `BACKEND = "supabase"`.
+1. Opret en gratis konto på [supabase.com](https://supabase.com) og opret et
+   projekt (vælg fx region *West EU*).
+2. Åbn **SQL Editor** i venstremenuen, indsæt SQL'en herunder og tryk **Run**:
 
-Der gemmes fortsat en lokal kopi som backup, og Supabase-kaldene bruger REST
-direkte, så der skal ikke installeres noget.
+   ```sql
+   create table if not exists collection (
+     id text primary key,
+     data jsonb not null,
+     updated_at timestamptz not null default now()
+   );
+
+   alter table collection enable row level security;
+
+   create policy "laes samlingen"    on collection for select using (true);
+   create policy "opret samlingen"   on collection for insert with check (true);
+   create policy "opdater samlingen" on collection for update using (true);
+   ```
+
+3. Gå til **Settings → API** og kopiér **Project URL** og **anon public**-nøglen.
+4. Indsæt dem i toppen af `js/storage.js` og sæt `BACKEND = "supabase"`.
+5. Commit og push — færdig!
+
+Første gang siden åbnes med Supabase slået til, uploades den eksisterende
+lokale samling automatisk, så intet går tabt. Derefter synkroniseres der ved
+hver ændring, og andre enheder henter seneste version, når fanen får fokus.
+Der gemmes altid også en lokal kopi, så siden virker offline.
+
+> **Bemærk:** anon-nøglen ligger synligt i sidens kildekode, og policierne
+> ovenfor tillader alle med linket at læse/skrive samlingen. Til en privat
+> hobbyliste er det fint (og I har altid JSON-backuppen), men gem ikke
+> personlige oplysninger i noterne.
 
 ## Coverbilleder
 
