@@ -18,7 +18,7 @@
    kalder kun Storage.load() og Storage.save().
    ============================================================ */
 
-const BACKEND = "local"; // "local" | "supabase"
+const BACKEND = "supabase"; // "local" | "supabase" — bruger localStorage, indtil URL+nøgle er udfyldt
 
 const SUPABASE_URL = "";      // fx "https://xxxx.supabase.co"
 const SUPABASE_ANON_KEY = ""; // projektets "anon public"-nøgle
