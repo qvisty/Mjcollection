@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Min MJ LP-samling 🕺</title>
+  <meta name="description" content="Overblik over min Michael Jackson-vinylsamling — hvad jeg har, og hvad jeg jagter.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💿</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="logo" href="#/">
+      <span class="logo-disc">💿</span>
+      <span class="logo-text">MJ <span class="gold">Samlingen</span></span>
+    </a>
+    <nav class="nav">
+      <a href="#/" data-route="">Overblik</a>
+      <a href="#/samling" data-route="samling">Samlingen</a>
+      <a href="#/milepaele" data-route="milepaele">Milepæle</a>
+    </nav>
+    <span id="header-count" class="count-pill header-pill">0/0</span>
+  </header>
+
+  <main id="view">
+    <p class="empty-hint" style="padding:3rem 1rem">Indlæser samlingen… 🎶</p>
+  </main>
+
+  <footer class="site-footer">
+    <p>Lavet med ❤️ til verdens sejeste pladesamler.</p>
+    <div class="footer-actions">
+      <button class="btn btn-small" onclick="doExport()">⬇ Gem backup</button>
+      <label class="btn btn-small">
+        ⬆ Hent backup
+        <input type="file" accept="application/json" hidden onchange="doImport(this)">
+      </label>
+    </div>
+    <p class="footer-note">Samlingen gemmes i denne browser. Tag jævnligt en backup!</p>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/covers.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
