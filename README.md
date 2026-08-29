@@ -20,10 +20,51 @@ Lige nu i browserens `localStorage` — det virker med det samme og overlever, a
 browseren lukkes (i modsætning til `sessionStorage`). Data er altså **pr. browser
 pr. enhed**; brug backup-knapperne til at flytte samlingen mellem enheder.
 
-### Skift til Supabase (5 minutter)
+### Skift til Google Firestore (5 minutter)
 
 Hele appen taler kun med `Storage.load()` / `Storage.save()` i `js/storage.js`,
 så skiftet kræver ingen ændringer i resten af koden:
+
+1. Gå til [console.firebase.google.com](https://console.firebase.google.com),
+   log ind med din Google-konto og vælg **Create a project** (navn fx
+   `mj-samlingen`; Google Analytics kan slås fra).
+2. I venstremenuen: **Build → Firestore Database → Create database**.
+   Vælg region (fx `europe-west1`) og **Start in production mode**.
+3. Gå til fanen **Rules**, erstat indholdet med dette og tryk **Publish**:
+
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /mjcollection/mj-lp-samling {
+         allow read, write: if true;
+       }
+     }
+   }
+   ```
+
+   (Kun det ene dokument, samlingen bor i, kan læses/skrives — alt andet er
+   lukket.)
+4. Klik tandhjulet → **Project settings** → under *Your apps*: tilføj en
+   **web-app** (`</>`-ikonet, navn er ligegyldigt, ingen hosting). Kopiér
+   `projectId` og `apiKey` fra kodestumpen, der vises.
+5. Indsæt de to værdier i toppen af `js/storage.js`
+   (`FIRESTORE_PROJECT_ID` og `FIRESTORE_API_KEY`) — `BACKEND` står
+   allerede på `"firestore"`. Commit og push — færdig!
+
+Første gang siden åbnes med sky-backend, uploades en evt. eksisterende lokal
+samling automatisk, så intet går tabt. Derefter synkroniseres der ved hver
+ændring, og andre enheder henter seneste version, når fanen får fokus. Der
+gemmes altid også en lokal kopi, så siden virker offline.
+
+> **Bemærk:** `apiKey` er ikke en hemmelighed (den identificerer bare
+> projektet), men reglerne ovenfor tillader alle, der kender linket, at
+> læse/skrive samlingen. Til en privat hobbyliste er det fint (og I har
+> altid JSON-backuppen), men gem ikke personlige oplysninger i noterne.
+
+### Alternativ: Supabase
+
+Foretrækker du Supabase, sæt `BACKEND = "supabase"` i `js/storage.js` og:
 
 1. Opret en gratis konto på [supabase.com](https://supabase.com) og opret et
    projekt (vælg fx region *West EU*).
@@ -44,18 +85,10 @@ så skiftet kræver ingen ændringer i resten af koden:
    ```
 
 3. Gå til **Settings → API** og kopiér **Project URL** og **anon public**-nøglen.
-4. Indsæt dem i toppen af `js/storage.js` og sæt `BACKEND = "supabase"`.
-5. Commit og push — færdig!
+4. Indsæt dem i toppen af `js/storage.js` (`SUPABASE_URL` og
+   `SUPABASE_ANON_KEY`). Commit og push — færdig!
 
-Første gang siden åbnes med Supabase slået til, uploades den eksisterende
-lokale samling automatisk, så intet går tabt. Derefter synkroniseres der ved
-hver ændring, og andre enheder henter seneste version, når fanen får fokus.
-Der gemmes altid også en lokal kopi, så siden virker offline.
-
-> **Bemærk:** anon-nøglen ligger synligt i sidens kildekode, og policierne
-> ovenfor tillader alle med linket at læse/skrive samlingen. Til en privat
-> hobbyliste er det fint (og I har altid JSON-backuppen), men gem ikke
-> personlige oplysninger i noterne.
+Sync-adfærden er den samme som med Firestore (samme fælles logik).
 
 ## Coverbilleder
 

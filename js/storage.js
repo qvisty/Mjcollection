@@ -1,28 +1,38 @@
 /* ============================================================
    Storage-lag
    ------------------------------------------------------------
-   Samlingen gemmes altid i browserens localStorage — og når
-   Supabase er slået til, synkroniseres den også til skyen, så
+   Samlingen gemmes altid i browserens localStorage — og når en
+   sky-backend er slået til, synkroniseres den også dertil, så
    den kan ses og opdateres fra flere enheder.
 
-   SÅDAN SLÅS SUPABASE TIL (5 minutter):
-     1) Opret en gratis konto + et projekt på supabase.com.
-     2) Kør SQL-opsætningen fra README.md i projektets
-        "SQL Editor" (opretter tabellen `collection`).
-     3) Kopiér projektets URL og "anon public"-nøgle fra
-        Settings → API, og indsæt dem herunder.
-     4) Sæt BACKEND = "supabase".
-   Første gang siden åbnes med Supabase slået til, uploades den
-   eksisterende lokale samling automatisk — der går intet tabt.
+   SÅDAN SLÅS GOOGLE FIRESTORE TIL (ca. 5 minutter):
+     1) Gå til console.firebase.google.com, log ind med din
+        Google-konto og opret et projekt.
+     2) Opret en Firestore-database og indsæt sikkerheds-
+        reglerne fra README.md.
+     3) Registrér en web-app i projektet og kopiér projectId
+        og apiKey ind herunder.
+     4) BACKEND står allerede på "firestore".
+   (Supabase understøttes også — sæt BACKEND = "supabase" og
+   udfyld Supabase-værdierne i stedet. Se README.md.)
+
+   Første gang siden åbnes med sky-backend, uploades en evt.
+   eksisterende lokal samling automatisk — der går intet tabt.
    Resten af appen er ligeglad med, hvor data ligger — den
    kalder kun Storage.load() og Storage.save().
    ============================================================ */
 
-const BACKEND = "supabase"; // "local" | "supabase" — bruger localStorage, indtil URL+nøgle er udfyldt
+const BACKEND = "firestore"; // "local" | "firestore" | "supabase" — falder tilbage til localStorage, indtil nøglerne er udfyldt
 
+/* --- Google Firestore --- */
+const FIRESTORE_PROJECT_ID = ""; // fx "mj-samlingen"
+const FIRESTORE_API_KEY = "";    // web-appens apiKey (starter med "AIza...")
+
+/* --- Supabase (alternativ) --- */
 const SUPABASE_URL = "";      // fx "https://xxxx.supabase.co"
 const SUPABASE_ANON_KEY = ""; // projektets "anon public"-nøgle
-const COLLECTION_ROW_ID = "mj-lp-samling"; // rækken samlingen gemmes i
+
+const COLLECTION_ROW_ID = "mj-lp-samling"; // dokumentet/rækken samlingen gemmes i
 
 const STORAGE_KEY = "mj-collection-v1";
 
@@ -57,11 +67,95 @@ const LocalBackend = {
   },
 };
 
-/* Supabase-backend via REST (PostgREST) — kræver kun URL + anon-
-   nøgle, ingen biblioteker. localStorage bruges som lokal kopi
-   og fallback, så siden også virker offline. */
-const SupabaseBackend = {
-  isRemote: true,
+/* ------------------------------------------------------------
+   Fælles logik for sky-backends. En backend skal kun levere:
+     fetchRemote()   → state-objekt eller null (findes ikke endnu)
+     pushRemote(st)  → gem state i skyen, returnér true/false
+   Resten (lokal kopi, første-gangs-upload, offline-fallback og
+   "nyeste version vinder") håndteres her.
+   ------------------------------------------------------------ */
+function makeRemoteBackend(impl) {
+  return {
+    isRemote: true,
+
+    async load() {
+      const local = await LocalBackend.load();
+      let remote;
+      try {
+        remote = await impl.fetchRemote();
+      } catch (e) {
+        console.warn("Skyen kunne ikke nås — bruger lokal kopi:", e);
+        return local; // offline: fortsæt lokalt, sync sker ved næste save/load
+      }
+
+      // Første gang: intet i skyen endnu → upload den lokale samling
+      if (!remote) {
+        if (hasData(local)) {
+          try { await impl.pushRemote(local); } catch {}
+        }
+        return local;
+      }
+
+      // Er den lokale kopi nyere end skyen (fx redigeret offline)?
+      if (hasData(local) && local.updatedAt && remote.updatedAt &&
+          local.updatedAt > remote.updatedAt) {
+        try { await impl.pushRemote(local); } catch {}
+        return local;
+      }
+
+      // Ellers vinder skyen — gem en frisk lokal kopi
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote)); } catch {}
+      return remote;
+    },
+
+    async save(state) {
+      // Gem altid først lokalt (sætter også updatedAt)
+      await LocalBackend.save(state);
+      try {
+        return await impl.pushRemote(state);
+      } catch (e) {
+        console.warn("Kunne ikke gemme i skyen (data er gemt lokalt):", e);
+        return false;
+      }
+    },
+  };
+}
+
+/* --- Google Firestore via REST (ingen biblioteker) ---
+   Hele samlingen gemmes som ét dokument med et enkelt
+   JSON-tekstfelt — enkelt, og langt under Firestores
+   grænse på 1 MB pr. dokument. */
+const FirestoreBackend = makeRemoteBackend({
+  _url() {
+    return "https://firestore.googleapis.com/v1/projects/" +
+      `${FIRESTORE_PROJECT_ID}/databases/(default)/documents/` +
+      `mjcollection/${COLLECTION_ROW_ID}?key=${FIRESTORE_API_KEY}`;
+  },
+
+  async fetchRemote() {
+    const res = await fetch(this._url());
+    if (res.status === 404) return null; // dokumentet findes ikke endnu
+    if (!res.ok) throw new Error(`Firestore svarede ${res.status}`);
+    const doc = await res.json();
+    const json = doc.fields?.json?.stringValue;
+    if (!json) return null;
+    return { ...structuredClone(EMPTY_STATE), ...JSON.parse(json) };
+  },
+
+  async pushRemote(state) {
+    const res = await fetch(this._url(), {
+      method: "PATCH", // opretter dokumentet, hvis det ikke findes
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fields: { json: { stringValue: JSON.stringify(state) } },
+      }),
+    });
+    return res.ok;
+  },
+});
+
+/* --- Supabase via REST (PostgREST) --- */
+const SupabaseBackend = makeRemoteBackend({
   _headers() {
     return {
       apikey: SUPABASE_ANON_KEY,
@@ -70,7 +164,7 @@ const SupabaseBackend = {
     };
   },
 
-  async _fetchRemote() {
+  async fetchRemote() {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/collection?id=eq.${COLLECTION_ROW_ID}&select=data`,
       { headers: this._headers() }
@@ -80,10 +174,10 @@ const SupabaseBackend = {
     if (Array.isArray(rows) && rows[0] && rows[0].data) {
       return { ...structuredClone(EMPTY_STATE), ...rows[0].data };
     }
-    return null; // ingen række endnu
+    return null;
   },
 
-  async _pushRemote(state) {
+  async pushRemote(state) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/collection`, {
       method: "POST",
       headers: { ...this._headers(), Prefer: "resolution=merge-duplicates" },
@@ -95,55 +189,15 @@ const SupabaseBackend = {
     });
     return res.ok;
   },
+});
 
-  async load() {
-    const local = await LocalBackend.load();
-    let remote;
-    try {
-      remote = await this._fetchRemote();
-    } catch (e) {
-      console.warn("Supabase kunne ikke nås — bruger lokal kopi:", e);
-      return local; // offline: fortsæt lokalt, sync sker ved næste save/load
-    }
-
-    // Første gang: intet i skyen endnu → upload den lokale samling
-    if (!remote) {
-      if (hasData(local)) {
-        try { await this._pushRemote(local); } catch {}
-      }
-      return local;
-    }
-
-    // Er den lokale kopi nyere end skyen (fx redigeret offline)?
-    if (hasData(local) && local.updatedAt && remote.updatedAt &&
-        local.updatedAt > remote.updatedAt) {
-      try { await this._pushRemote(local); } catch {}
-      return local;
-    }
-
-    // Ellers vinder skyen — gem en frisk lokal kopi
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote)); } catch {}
-    return remote;
-  },
-
-  async save(state) {
-    // Gem altid først lokalt (sætter også updatedAt)
-    await LocalBackend.save(state);
-    try {
-      return await this._pushRemote(state);
-    } catch (e) {
-      console.warn("Supabase save fejlede (data er gemt lokalt):", e);
-      return false;
-    }
-  },
-};
-
-const Storage = BACKEND === "supabase" && SUPABASE_URL && SUPABASE_ANON_KEY
-  ? SupabaseBackend
-  : LocalBackend;
+const Storage =
+  BACKEND === "firestore" && FIRESTORE_PROJECT_ID && FIRESTORE_API_KEY ? FirestoreBackend :
+  BACKEND === "supabase" && SUPABASE_URL && SUPABASE_ANON_KEY ? SupabaseBackend :
+  LocalBackend;
 
 /* Eksport/import som fil — god backup, og nem måde at flytte
-   samlingen mellem enheder, indtil Supabase er koblet på. */
+   samlingen mellem enheder, indtil en sky-backend er koblet på. */
 function exportCollection(state) {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
