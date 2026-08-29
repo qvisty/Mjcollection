@@ -35,19 +35,24 @@ direkte, så der skal ikke installeres noget.
 
 ## Coverbilleder
 
-Coverne hentes automatisk i browseren fra Wikipedia (albumartiklens hovedbillede)
-og caches i `localStorage`. Findes et cover ikke, vises en genereret vinylplade i
-stedet — og man kan altid sætte sit eget billede på en plade via "Ret detaljer".
+Coverne hentes automatisk i browseren og caches i `localStorage`, så det kun
+sker første gang:
+
+1. **Wikipedia** — albumartiklens hovedbillede (= pladecoveret).
+2. **iTunes** — fallback for de album, Wikipedia ikke kunne levere.
+
+Findes et cover stadig ikke, vises en genereret vinylplade — og man kan altid
+sætte sit eget billede på en plade via "Ret detaljer" (fx et foto af netop
+jeres eksemplar). Siden er kun til privat brug.
 
 ## Udgivelse på GitHub Pages
 
-1. Merge denne branch til `main`.
-2. Gå til **Settings → Pages** i repoet og vælg **Source: GitHub Actions**
-   (workflowet i `.github/workflows/pages.yml` udgiver siden automatisk ved
-   hvert push til `main`).
+Gå til **Settings → Pages** og vælg **Source: GitHub Actions** — workflowet i
+`.github/workflows/pages.yml` udgiver siden automatisk ved hvert push til
+`main`.
 
 Alternativt: vælg **Deploy from a branch** → `main` / `/ (root)` — det virker
-også fint, da siden er ren statisk HTML.
+også fint, da siden er ren statisk HTML (slet i så fald workflow-filen).
 
 ## Filer
 

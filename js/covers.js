@@ -10,7 +10,7 @@
    eksemplar).
    ============================================================ */
 
-const COVER_CACHE_KEY = "mj-covers-v1";
+const COVER_CACHE_KEY = "mj-covers-v2";
 const WIKI_API = "https://en.wikipedia.org/w/api.php";
 
 function loadCoverCache() {
@@ -46,8 +46,54 @@ async function wikiQueryImages(titles) {
   return result;
 }
 
+/* --- Ekstra kilde: iTunes Search API (via JSONP, ingen nøgle) --- */
+
+function itunesSearch(term) {
+  return new Promise(resolve => {
+    const cb = "itcb_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    const done = data => {
+      clearTimeout(timer);
+      delete window[cb];
+      script.remove();
+      resolve(data);
+    };
+    const timer = setTimeout(() => done(null), 8000);
+    window[cb] = done;
+    script.onerror = () => done(null);
+    script.src = "https://itunes.apple.com/search?media=music&entity=album&limit=10" +
+      `&term=${encodeURIComponent(term)}&callback=${cb}`;
+    document.head.appendChild(script);
+  });
+}
+
+function normTitle(s) {
+  return String(s).toLowerCase()
+    .replace(/\(.*?\)/g, "")
+    .replace(/[^a-z0-9æøå ]/g, "")
+    .replace(/\s+/g, " ").trim();
+}
+
+/* Returnerer en URL, null (svar men intet match — spørg ikke igen)
+   eller undefined (netværksfejl — prøv igen næste gang). */
+async function itunesCover(album) {
+  const data = await itunesSearch(`michael jackson ${album.title}`)
+    || await itunesSearch(`${album.artist} ${album.title}`);
+  if (!data || !data.results) return undefined;
+  const want = normTitle(album.title);
+  const hit = data.results.find(r => {
+    const got = normTitle(r.collectionName || "");
+    const artist = (r.artistName || "").toLowerCase();
+    return artist.includes("jackson") && (got.includes(want) || want.includes(got)) && got;
+  });
+  if (!hit || !hit.artworkUrl100) return null;
+  return hit.artworkUrl100.replace("100x100", "600x600");
+}
+
 /* Henter covers for alle album, med cache. Kalder onUpdate(),
-   hver gang der er nye billeder klar, så UI'et kan opdatere. */
+   hver gang der er nye billeder klar, så UI'et kan opdatere.
+   Kilde 1: Wikipedia (artiklens hovedbillede).
+   Kilde 2: iTunes (for de album, Wikipedia ikke kunne levere). */
 async function resolveCovers(albums, onUpdate) {
   const cache = loadCoverCache();
   const missing = albums.filter(a => a.wiki && cache[a.id] === undefined);
@@ -57,28 +103,43 @@ async function resolveCovers(albums, onUpdate) {
   for (let i = 0; i < missing.length; i += 40) chunks.push(missing.slice(i, i + 40));
 
   for (const chunk of chunks) {
+    let found = {}, retryFound = {};
     try {
-      const found = await wikiQueryImages(chunk.map(a => a.wiki));
+      found = await wikiQueryImages(chunk.map(a => a.wiki));
       // Andet forsøg for titler uden billede: prøv "Titel (album)"
       const retry = chunk.filter(a => !found[a.wiki] && !a.wiki.includes("("));
-      let retryFound = {};
       if (retry.length) {
         try {
           retryFound = await wikiQueryImages(retry.map(a => `${a.wiki} (album)`));
         } catch {}
       }
-      for (const a of chunk) {
-        const url = found[a.wiki] || retryFound[`${a.wiki} (album)`] || null;
-        cache[a.id] = url; // null gemmes også, så vi ikke spørger igen og igen
-      }
-      saveCoverCache(cache);
-      if (onUpdate) onUpdate(cache);
     } catch (e) {
       console.warn("Kunne ikke hente covers fra Wikipedia:", e);
-      // Gem intet for denne chunk — så prøver vi igen næste gang siden åbnes
-      return cache;
     }
+    for (const a of chunk) {
+      const url = found[a.wiki] || retryFound[`${a.wiki} (album)`];
+      if (url) cache[a.id] = url; // uafklarede album prøves hos iTunes nedenfor
+    }
+    saveCoverCache(cache);
+    if (onUpdate) onUpdate(cache);
   }
+
+  // iTunes-fallback, ét album ad gangen (og kun for dem der mangler)
+  for (const a of missing) {
+    if (cache[a.id]) continue;
+    try {
+      const url = await itunesCover(a);
+      if (url !== undefined) { // undefined = netværksfejl, prøv igen næste besøg
+        cache[a.id] = url;     // null gemmes også → vi spørger ikke igen
+        saveCoverCache(cache);
+        if (url && onUpdate) onUpdate(cache);
+      }
+    } catch (e) {
+      console.warn("iTunes-opslag fejlede for", a.title, e);
+    }
+    await new Promise(r => setTimeout(r, 350)); // vær høflig ved API'et
+  }
+  if (onUpdate) onUpdate(cache);
   return cache;
 }
 
