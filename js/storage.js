@@ -25,8 +25,8 @@
 const BACKEND = "firestore"; // "local" | "firestore" | "supabase" — falder tilbage til localStorage, indtil nøglerne er udfyldt
 
 /* --- Google Firestore --- */
-const FIRESTORE_PROJECT_ID = ""; // fx "mj-samlingen"
-const FIRESTORE_API_KEY = "";    // web-appens apiKey (starter med "AIza...")
+const FIRESTORE_PROJECT_ID = "mj-samlingen";
+const FIRESTORE_API_KEY = "AIzaSyCsanRSzqDQNz8A3ZgKYUuSloURHdOYYvk"; // web-appens apiKey (ikke hemmelig)
 
 /* --- Supabase (alternativ) --- */
 const SUPABASE_URL = "";      // fx "https://xxxx.supabase.co"
