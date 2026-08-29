@@ -468,8 +468,8 @@ function openModal(id) {
           ${r.owned ? "💿 Den er i samlingen!" : "＋ Jeg har den!"}
         </button>
 
-        <details class="edit-details" ${r.owned ? "open" : ""}>
-          <summary>Ret detaljer ✏️</summary>
+        <details class="edit-details">
+          <summary>Tilføj detaljer ✏️ <span class="optional-hint">(helt valgfrit)</span></summary>
           <form class="edit-form" onsubmit="saveDetails(event, '${id}')">
             <label>Stand
               <select name="condition">
@@ -487,8 +487,9 @@ function openModal(id) {
               <textarea name="notes" rows="3">${escapeHTML(r.notes || "")}</textarea>
             </label>
             <label>Eget coverbillede (link til foto)
-              <input type="url" name="coverUrl" placeholder="https://…" value="${escapeHTML(r.coverUrl || "")}">
+              <input type="text" name="coverUrl" placeholder="https://…" value="${escapeHTML(r.coverUrl || "")}">
             </label>
+            <p class="optional-note">Alle felter er valgfrie — udfyld kun det, du har lyst til. 😊</p>
             <button class="btn btn-gold" type="submit">Gem</button>
           </form>
         </details>

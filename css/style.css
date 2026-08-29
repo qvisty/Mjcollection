@@ -677,6 +677,10 @@ main {
 
 .edit-form .btn { align-self: flex-start; }
 
+.optional-hint { color: var(--text-dim); font-weight: 400; font-size: .85em; }
+
+.optional-note { color: var(--text-dim); font-size: .8rem; margin: 0; }
+
 /* ---------- Toast + konfetti ---------- */
 
 .toast {
