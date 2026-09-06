@@ -238,6 +238,6 @@ const ACHIEVEMENTS = [
     desc: "Markér en plade med ⭐⭐⭐ — dit allerhøjeste ønske.",
     progress: s => [Math.min(s.dreamMarked, 1), 1] },
   { id: "notes", emoji: "✍️", title: "Pladenørden",
-    desc: "Skriv en note på en af dine plader — fx hvor du fandt den.",
+    desc: "Skriv en bemærkning på en plade — fx hvor du fandt den, eller hvor du har set den til salg.",
     progress: s => [Math.min(s.withNotes, 1), 1] },
 ];

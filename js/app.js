@@ -43,13 +43,13 @@ function computeStats() {
     const r = rec(a.id);
     if ((r.wish || 0) > 0 && !r.owned) s.wishlisted++;
     if ((r.wish || 0) === 3) s.dreamMarked++;
+    if (r.notes && r.notes.trim()) s.withNotes++;
     if (r.owned) {
       s.owned++;
       s.byCategory[a.category] = (s.byCategory[a.category] || 0) + 1;
       const dec = Math.floor(a.year / 10) * 10;
       s.byDecade[dec] = (s.byDecade[dec] || 0) + 1;
       if (a.rare) s.rareOwned++;
-      if (r.notes && r.notes.trim()) s.withNotes++;
     }
   }
   s.percent = s.total ? Math.round((s.owned / s.total) * 100) : 0;
@@ -140,8 +140,8 @@ async function toggleOwned(id) {
     confetti();
   }
   celebrateNewAchievements(before);
-  await persist();
   render();
+  persist(); // gemmer i baggrunden — UI'et skal ikke vente på skyen
 }
 
 /* Sæt ønske-niveau 1-3 ⭐ — klik på samme niveau igen fjerner ønsket */
@@ -152,8 +152,8 @@ async function setWish(id, level) {
   setRec(id, { wish: next });
   if (next === 3) toast(`<span class="toast-emoji">💭</span><div><strong>${escapeHTML(albumById(id).title)}</strong> er nu en drømmeplade!</div>`);
   celebrateNewAchievements(before);
-  await persist();
   render();
+  persist();
 }
 
 function wishStarsHTML(id, size = "", inModal = false) {
@@ -465,6 +465,7 @@ function albumCard(album) {
         <h3>${escapeHTML(album.title)}</h3>
         <p class="card-meta">${escapeHTML(album.artist)} · ${album.year}</p>
         <span class="cat-tag" style="--cat:${cat.color}">${cat.emoji} ${cat.label}</span>
+        ${r.notes && r.notes.trim() ? `<span class="note-dot" title="${escapeHTML(r.notes.trim())}">💬</span>` : ""}
       </div>
       <div class="card-actions" onclick="event.stopPropagation()">
         <button class="btn-own ${r.owned ? "on" : ""}" onclick="toggleOwned('${album.id}')"
@@ -537,6 +538,13 @@ function openModal(id) {
           <span class="modal-wish-text">${(r.wish || 0) > 0 ? WISH_LABELS[r.wish] : "Klik på stjernerne for at sætte den på ønskelisten"}</span>
         </div>`}
 
+        <div class="note-box">
+          <label for="note-input">💬 Min bemærkning</label>
+          <textarea id="note-input" rows="3"
+            placeholder="Fx 'Set i genbrugsbutikken til 80 kr.' eller 'Fik den af mormor ❤️'">${escapeHTML(r.notes || "")}</textarea>
+          <button class="btn btn-small" onclick="saveNote('${id}')">Gem bemærkning</button>
+        </div>
+
         <details class="edit-details">
           <summary>Tilføj detaljer ✏️ <span class="optional-hint">(helt valgfrit)</span></summary>
           <form class="edit-form" onsubmit="saveDetails(event, '${id}')">
@@ -551,9 +559,6 @@ function openModal(id) {
             </label>
             <label>Pris
               <input type="text" name="price" placeholder="fx 75 kr." value="${escapeHTML(r.price || "")}">
-            </label>
-            <label>Noter (hvor fandt du den? god historie?)
-              <textarea name="notes" rows="3">${escapeHTML(r.notes || "")}</textarea>
             </label>
             <label>Eget coverbillede (link til foto)
               <input type="text" name="coverUrl" placeholder="https://…" value="${escapeHTML(r.coverUrl || "")}">
@@ -579,6 +584,16 @@ async function toggleOwnedInModal(id) {
   openModal(id);
 }
 
+async function saveNote(id) {
+  const before = earnedSet(computeStats());
+  const text = ($("#note-input")?.value || "").trim();
+  setRec(id, { notes: text });
+  celebrateNewAchievements(before);
+  toast(text ? "Bemærkning gemt! 💬" : "Bemærkning fjernet");
+  render(); // opdatér 💬-mærket på kortet bag modalen
+  persist();
+}
+
 async function saveDetails(e, id) {
   e.preventDefault();
   const before = earnedSet(computeStats());
@@ -587,14 +602,13 @@ async function saveDetails(e, id) {
     condition: f.get("condition") || "",
     purchasedAt: f.get("purchasedAt") || "",
     price: f.get("price") || "",
-    notes: f.get("notes") || "",
     coverUrl: (f.get("coverUrl") || "").trim(),
   });
   celebrateNewAchievements(before);
-  await persist();
   toast("Gemt! ✅");
   closeModal();
   render();
+  persist();
 }
 
 /* ---------- Backup ---------- */
