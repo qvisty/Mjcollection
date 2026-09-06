@@ -4,7 +4,9 @@
 
 let state = null;      // { records, seenAchievements }
 let covers = {};       // albumId -> billed-URL (eller null)
-let filters = { search: "", category: "alle", status: "alle", decade: "alle", sort: "aar-op" };
+let filters = { search: "", category: "alle", status: "alle", wish: "alle", decade: "alle", label: "alle", sort: "aar-op" };
+
+const WISH_LABELS = { 1: "Vil gerne have den", 2: "Ønsker mig den meget", 3: "Drømmeplade! 💭" };
 
 /* ---------- Hjælpere ---------- */
 
@@ -33,13 +35,14 @@ function coverHTML(album, cls = "") {
 
 function computeStats() {
   const s = {
-    total: ALBUMS.length, owned: 0, wishlisted: 0, rareOwned: 0, withNotes: 0,
+    total: ALBUMS.length, owned: 0, wishlisted: 0, dreamMarked: 0, rareOwned: 0, withNotes: 0,
     byCategory: {}, categoryTotals: {}, byDecade: {},
   };
   for (const a of ALBUMS) {
     s.categoryTotals[a.category] = (s.categoryTotals[a.category] || 0) + 1;
     const r = rec(a.id);
-    if (r.wishlist && !r.owned) s.wishlisted++;
+    if ((r.wish || 0) > 0 && !r.owned) s.wishlisted++;
+    if ((r.wish || 0) === 3) s.dreamMarked++;
     if (r.owned) {
       s.owned++;
       s.byCategory[a.category] = (s.byCategory[a.category] || 0) + 1;
@@ -131,7 +134,7 @@ async function toggleOwned(id) {
     setRec(id, { owned: false });
     toast("Fjernet fra samlingen");
   } else {
-    setRec(id, { owned: true, wishlist: false, ownedDate: r.ownedDate || new Date().toISOString() });
+    setRec(id, { owned: true, ownedDate: r.ownedDate || new Date().toISOString() });
     const a = albumById(id);
     toast(`<span class="toast-emoji">💿</span><div><strong>${escapeHTML(a.title)}</strong> er nu i samlingen!</div>`);
     confetti();
@@ -141,12 +144,33 @@ async function toggleOwned(id) {
   render();
 }
 
-async function toggleWishlist(id) {
+/* Sæt ønske-niveau 1-3 ⭐ — klik på samme niveau igen fjerner ønsket */
+async function setWish(id, level) {
   const before = earnedSet(computeStats());
-  setRec(id, { wishlist: !rec(id).wishlist });
+  const current = rec(id).wish || 0;
+  const next = current === level ? 0 : level;
+  setRec(id, { wish: next });
+  if (next === 3) toast(`<span class="toast-emoji">💭</span><div><strong>${escapeHTML(albumById(id).title)}</strong> er nu en drømmeplade!</div>`);
   celebrateNewAchievements(before);
   await persist();
   render();
+}
+
+function wishStarsHTML(id, size = "", inModal = false) {
+  const wish = rec(id).wish || 0;
+  const handler = inModal ? "setWishInModal" : "setWish";
+  return `
+    <div class="wish-stars ${size}" title="Hvor højt ønsker du dig den? Klik på stjernerne">
+      ${[1, 2, 3].map(n => `
+        <button class="star ${wish >= n ? "on" : ""}" aria-label="Ønske-niveau ${n}"
+          onclick="event.stopPropagation(); ${handler}('${id}', ${n})">★</button>`).join("")}
+    </div>`;
+}
+
+async function setWishInModal(id, level) {
+  closeModal();
+  await setWish(id, level);
+  openModal(id);
 }
 
 /* ---------- Router ---------- */
@@ -217,7 +241,10 @@ function renderDashboard() {
     .sort((a, b) => rec(b.id).ownedDate.localeCompare(rec(a.id).ownedDate))
     .slice(0, 4);
 
-  const wish = ALBUMS.filter(a => rec(a.id).wishlist && !rec(a.id).owned).slice(0, 4);
+  const wish = ALBUMS
+    .filter(a => (rec(a.id).wish || 0) > 0 && !rec(a.id).owned)
+    .sort((a, b) => (rec(b.id).wish || 0) - (rec(a.id).wish || 0) || a.year - b.year)
+    .slice(0, 4);
 
   const catBars = Object.entries(CATEGORIES).map(([key, cat]) => {
     const have = s.byCategory[key] || 0, total = s.categoryTotals[key] || 0;
@@ -282,22 +309,24 @@ function renderDashboard() {
       </section>`}
       ${wish.length ? `
       <section class="panel">
-        <h2>⭐ På jagt efter</h2>
-        <div class="mini-grid">${wish.map(a => miniCard(a)).join("")}</div>
+        <h2>⭐ Ønskelisten</h2>
+        <div class="mini-grid">${wish.map(a => miniCard(a, true)).join("")}</div>
       </section>` : `
       <section class="panel">
-        <h2>⭐ På jagt efter</h2>
-        <p class="empty-hint">Sæt stjerne ⭐ på de plader, du jagter — så har du din egen ønskeliste.</p>
+        <h2>⭐ Ønskelisten</h2>
+        <p class="empty-hint">Giv de plader, du jagter, 1-3 stjerner ⭐⭐⭐ — så har du din egen ønskeliste, sorteret efter hvor højt du ønsker dig dem.</p>
       </section>`}
     </div>`;
 }
 
-function miniCard(album) {
+function miniCard(album, showWish = false) {
+  const wish = rec(album.id).wish || 0;
   return `
     <div class="mini-card" onclick="openModal('${album.id}')">
       <div class="mini-cover">${coverHTML(album)}</div>
       <span class="mini-title">${escapeHTML(album.title)}</span>
       <span class="mini-year">${album.year}</span>
+      ${showWish && wish ? `<span class="mini-wish">${"★".repeat(wish)}</span>` : ""}
     </div>`;
 }
 
@@ -316,18 +345,37 @@ function filteredAlbums() {
     a.title.toLowerCase().includes(q) || a.artist.toLowerCase().includes(q) || String(a.year).includes(q));
   if (filters.category !== "alle") list = list.filter(a => a.category === filters.category);
   if (filters.decade !== "alle") list = list.filter(a => Math.floor(a.year / 10) * 10 === +filters.decade);
+  if (filters.label !== "alle") {
+    list = filters.label === "andre"
+      ? list.filter(a => a.label !== "Motown" && a.label !== "Epic")
+      : list.filter(a => a.label === filters.label);
+  }
   if (filters.status === "ejet") list = list.filter(a => rec(a.id).owned);
   if (filters.status === "mangler") list = list.filter(a => !rec(a.id).owned);
-  if (filters.status === "oenske") list = list.filter(a => rec(a.id).wishlist && !rec(a.id).owned);
   if (filters.status === "sjaelden") list = list.filter(a => a.rare);
+  if (filters.wish !== "alle") {
+    const min = +filters.wish;
+    list = list.filter(a => (rec(a.id).wish || 0) >= min && !rec(a.id).owned);
+  }
 
   switch (filters.sort) {
     case "aar-op": list.sort((a, b) => a.year - b.year || a.title.localeCompare(b.title, "da")); break;
     case "aar-ned": list.sort((a, b) => b.year - a.year || a.title.localeCompare(b.title, "da")); break;
     case "titel": list.sort((a, b) => a.title.localeCompare(b.title, "da")); break;
     case "senest": list.sort((a, b) => (rec(b.id).ownedDate || "").localeCompare(rec(a.id).ownedDate || "")); break;
+    case "oensker": list.sort((a, b) => (rec(b.id).wish || 0) - (rec(a.id).wish || 0) || a.year - b.year); break;
   }
   return list;
+}
+
+function filtersActive() {
+  return filters.search || filters.category !== "alle" || filters.status !== "alle" ||
+    filters.wish !== "alle" || filters.decade !== "alle" || filters.label !== "alle";
+}
+
+function resetFilters() {
+  filters = { ...filters, search: "", category: "alle", status: "alle", wish: "alle", decade: "alle", label: "alle" };
+  renderCollection();
 }
 
 function renderCollection() {
@@ -353,22 +401,37 @@ function renderCollection() {
           <option value="alle"    ${filters.status === "alle" ? "selected" : ""}>Alle plader</option>
           <option value="ejet"    ${filters.status === "ejet" ? "selected" : ""}>💿 Har jeg</option>
           <option value="mangler" ${filters.status === "mangler" ? "selected" : ""}>🔎 Mangler</option>
-          <option value="oenske"  ${filters.status === "oenske" ? "selected" : ""}>⭐ Ønskeliste</option>
           <option value="sjaelden"${filters.status === "sjaelden" ? "selected" : ""}>✨ Sjældne</option>
+        </select>
+        <select onchange="setFilter('wish', this.value)">
+          <option value="alle" ${filters.wish === "alle" ? "selected" : ""}>Ønskeliste: alle</option>
+          <option value="1"    ${filters.wish === "1" ? "selected" : ""}>★ og opefter</option>
+          <option value="2"    ${filters.wish === "2" ? "selected" : ""}>★★ og opefter</option>
+          <option value="3"    ${filters.wish === "3" ? "selected" : ""}>★★★ Drømmeplader</option>
         </select>
         <select onchange="setFilter('decade', this.value)">
           <option value="alle" ${filters.decade === "alle" ? "selected" : ""}>Alle årtier</option>
           ${[1960, 1970, 1980, 1990, 2000, 2010].map(d =>
             `<option value="${d}" ${filters.decade == d ? "selected" : ""}>${d}'erne</option>`).join("")}
         </select>
+        <select onchange="setFilter('label', this.value)">
+          <option value="alle"   ${filters.label === "alle" ? "selected" : ""}>Alle pladeselskaber</option>
+          <option value="Motown" ${filters.label === "Motown" ? "selected" : ""}>Motown</option>
+          <option value="Epic"   ${filters.label === "Epic" ? "selected" : ""}>Epic</option>
+          <option value="andre"  ${filters.label === "andre" ? "selected" : ""}>Andre</option>
+        </select>
         <select onchange="setFilter('sort', this.value)">
           <option value="aar-op"  ${filters.sort === "aar-op" ? "selected" : ""}>År (ældste først)</option>
           <option value="aar-ned" ${filters.sort === "aar-ned" ? "selected" : ""}>År (nyeste først)</option>
           <option value="titel"   ${filters.sort === "titel" ? "selected" : ""}>Titel (A–Å)</option>
           <option value="senest"  ${filters.sort === "senest" ? "selected" : ""}>Senest tilføjet</option>
+          <option value="oensker" ${filters.sort === "oensker" ? "selected" : ""}>Flest ønske-stjerner</option>
         </select>
+        ${filtersActive() ? `<button class="btn-reset" onclick="resetFilters()">✕ Nulstil filtre</button>` : ""}
       </div>
     </section>
+
+    ${filtersActive() ? `<p class="result-count">${list.length} ${list.length === 1 ? "plade" : "plader"} matcher filtrene</p>` : ""}
 
     <section class="grid">
       ${list.map(albumCard).join("") || `<p class="empty-hint">Ingen plader matcher din søgning. 🤔</p>`}
@@ -408,8 +471,7 @@ function albumCard(album) {
           title="${r.owned ? "Fjern fra samlingen" : "Jeg har den!"}">
           ${r.owned ? "💿 Har den!" : "＋ Har den!"}
         </button>
-        <button class="btn-star ${r.wishlist && !r.owned ? "on" : ""}" ${r.owned ? "disabled" : ""}
-          onclick="toggleWishlist('${album.id}')" title="Ønskeliste">⭐</button>
+        ${r.owned ? "" : wishStarsHTML(album.id)}
       </div>
     </article>`;
 }
@@ -467,6 +529,13 @@ function openModal(id) {
         <button class="btn-own big ${r.owned ? "on" : ""}" onclick="toggleOwnedInModal('${id}')">
           ${r.owned ? "💿 Den er i samlingen!" : "＋ Jeg har den!"}
         </button>
+
+        ${r.owned ? "" : `
+        <div class="modal-wish">
+          <span class="modal-wish-label">Hvor højt ønsker du dig den?</span>
+          ${wishStarsHTML(id, "big", true)}
+          <span class="modal-wish-text">${(r.wish || 0) > 0 ? WISH_LABELS[r.wish] : "Klik på stjernerne for at sætte den på ønskelisten"}</span>
+        </div>`}
 
         <details class="edit-details">
           <summary>Tilføj detaljer ✏️ <span class="optional-hint">(helt valgfrit)</span></summary>
@@ -550,6 +619,16 @@ async function doImport(input) {
 
 async function init() {
   state = await Storage.load();
+  // Migrér gammel til/fra-ønskeliste til stjerne-niveauer (2 ★ som standard)
+  let migrated = false;
+  for (const r of Object.values(state.records)) {
+    if (r.wishlist !== undefined) {
+      if (r.wishlist && !r.wish) r.wish = 2;
+      delete r.wishlist;
+      migrated = true;
+    }
+  }
+  if (migrated) await persist();
   // Marker allerede optjente milepæle som set, så gamle badges
   // ikke fejres igen ved hver genindlæsning
   const earned = earnedSet(computeStats());

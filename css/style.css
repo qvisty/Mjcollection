@@ -474,22 +474,75 @@ main {
 
 .btn-own.big { font-size: 1rem; padding: .8rem; width: 100%; margin: .9rem 0 .4rem; }
 
-.btn-star {
+/* Ønske-stjerner (1-3 ★) */
+.wish-stars {
+  display: flex;
+  align-items: center;
+  gap: .1rem;
   background: var(--bg-soft);
   border: 1px solid var(--panel-edge);
   border-radius: 10px;
-  font-size: 1rem;
-  padding: .5rem .7rem;
-  cursor: pointer;
-  filter: grayscale(1) opacity(.55);
-  transition: filter .15s, transform .15s;
+  padding: .15rem .35rem;
 }
 
-.btn-star:hover:not([disabled]) { filter: none; transform: scale(1.1); }
+.wish-stars .star {
+  background: none;
+  border: none;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: .2rem .1rem;
+  cursor: pointer;
+  color: #4a415e;
+  transition: color .12s, transform .12s;
+}
 
-.btn-star.on { filter: none; border-color: var(--gold); }
+.wish-stars .star:hover { transform: scale(1.25); }
 
-.btn-star[disabled] { cursor: default; visibility: hidden; }
+.wish-stars .star.on {
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(232, 185, 60, .55);
+}
+
+.wish-stars.big { padding: .3rem .6rem; }
+
+.wish-stars.big .star { font-size: 1.8rem; padding: .2rem .25rem; }
+
+.modal-wish {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .3rem;
+  margin: .2rem 0 .8rem;
+}
+
+.modal-wish-label { font-size: .82rem; font-weight: 600; color: var(--text-dim); }
+
+.modal-wish-text { font-size: .88rem; color: var(--gold-soft); font-weight: 600; min-height: 1.2em; }
+
+.mini-wish {
+  display: block;
+  color: var(--gold);
+  font-size: .8rem;
+  letter-spacing: .12em;
+  text-shadow: 0 0 6px rgba(232, 185, 60, .5);
+}
+
+.btn-reset {
+  background: none;
+  border: 1px dashed var(--text-dim);
+  color: var(--text-dim);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: .85rem;
+  padding: .45rem .8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+
+.btn-reset:hover { color: var(--text); border-color: var(--text); }
+
+.result-count { color: var(--text-dim); font-size: .85rem; margin: -.6rem 0 1rem; }
 
 /* ---------- Fallback-cover (genereret vinyl) ---------- */
 
