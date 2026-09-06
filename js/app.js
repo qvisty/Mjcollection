@@ -35,25 +35,42 @@ function coverHTML(album, cls = "") {
 
 function computeStats() {
   const s = {
-    total: ALBUMS.length, owned: 0, wishlisted: 0, dreamMarked: 0, rareOwned: 0, withNotes: 0,
-    byCategory: {}, categoryTotals: {}, byDecade: {},
+    total: ALBUMS.length, owned: 0, wishlisted: 0, dreamMarked: 0, rareOwned: 0,
+    withNotes: 0, withCondition: 0, withOwnCover: 0,
+    byCategory: {}, categoryTotals: {}, byDecade: {}, decadeTotals: {}, phases: {},
+    activeDays: state?.visitDayCount || 0, streak: state?.visitStreak || 0,
   };
   for (const a of ALBUMS) {
     s.categoryTotals[a.category] = (s.categoryTotals[a.category] || 0) + 1;
+    const dec = Math.floor(a.year / 10) * 10;
+    s.decadeTotals[dec] = (s.decadeTotals[dec] || 0) + 1;
     const r = rec(a.id);
     if ((r.wish || 0) > 0 && !r.owned) s.wishlisted++;
     if ((r.wish || 0) === 3) s.dreamMarked++;
     if (r.notes && r.notes.trim()) s.withNotes++;
+    if (r.condition) s.withCondition++;
+    if (r.coverUrl) s.withOwnCover++;
     if (r.owned) {
       s.owned++;
       s.byCategory[a.category] = (s.byCategory[a.category] || 0) + 1;
-      const dec = Math.floor(a.year / 10) * 10;
       s.byDecade[dec] = (s.byDecade[dec] || 0) + 1;
+      s.phases[mjPhase(a.year)] = (s.phases[mjPhase(a.year)] || 0) + 1;
       if (a.rare) s.rareOwned++;
     }
   }
+  s.phasesCovered = Object.keys(s.phases).length;
+  s.decadesOwned = Object.keys(s.byDecade).length;
   s.percent = s.total ? Math.round((s.owned / s.total) * 100) : 0;
   return s;
+}
+
+/* ---------- Niveau-system ---------- */
+
+function levelInfo(owned) {
+  let idx = 0;
+  LEVELS.forEach((l, i) => { if (owned >= l.min) idx = i; });
+  const cur = LEVELS[idx], next = LEVELS[idx + 1] || null;
+  return { idx, cur, next, toNext: next ? next.min - owned : 0 };
 }
 
 function achievementProgress(ach, s) {
@@ -138,6 +155,17 @@ async function toggleOwned(id) {
     const a = albumById(id);
     toast(`<span class="toast-emoji">💿</span><div><strong>${escapeHTML(a.title)}</strong> er nu i samlingen!</div>`);
     confetti();
+    // Level up?
+    const li = levelInfo(computeStats().owned);
+    if (li.idx > (state.seenLevel || 0)) {
+      state.seenLevel = li.idx;
+      setTimeout(() => {
+        confetti();
+        toast(`<span class="toast-emoji">${li.cur.emoji}</span>
+               <div><strong>LEVEL UP! Du er nu: ${escapeHTML(li.cur.title)}</strong><br>
+               <span>${li.next ? `Næste niveau: ${li.next.emoji} ${escapeHTML(li.next.title)} ved ${li.next.min} plader` : "Højeste niveau — kongen selv!"}</span></div>`, true);
+      }, 900);
+    }
   }
   celebrateNewAchievements(before);
   render();
@@ -229,6 +257,14 @@ function progressRing(percent, size = 180) {
 function renderDashboard() {
   const s = computeStats();
   const earned = earnedSet(s);
+  const lv = levelInfo(s.owned);
+
+  // Dagens jagt: én manglende plade, som skifter hver dag
+  const hunt = (() => {
+    const candidates = ALBUMS.filter(a => !rec(a.id).owned);
+    if (!candidates.length) return null;
+    return candidates[Math.floor(Date.now() / 864e5) % candidates.length];
+  })();
 
   // Næste milepæl: den ikke-optjente med højest fremdrift
   const next = ACHIEVEMENTS
@@ -263,6 +299,13 @@ function renderDashboard() {
     <section class="hero">
       <div class="hero-text">
         <h1>Min Michael Jackson<br><span class="gold">LP-samling</span></h1>
+        <div class="level-chip">
+          <span class="level-emoji">${lv.cur.emoji}</span>
+          <span><strong>Niveau ${lv.idx}: ${escapeHTML(lv.cur.title)}</strong><br>
+          <small>${lv.next
+            ? `${lv.toNext} ${lv.toNext === 1 ? "plade" : "plader"} til ${lv.next.emoji} ${escapeHTML(lv.next.title)}`
+            : "Højeste niveau — kongen selv! 👑"}</small></span>
+        </div>
         <p class="motivation">${motivationMessage(s)}</p>
         <div class="hero-stats">
           <div class="stat"><strong>${s.owned}</strong><span>i samlingen</span></div>
@@ -291,6 +334,19 @@ function renderDashboard() {
       </div>
     </section>` : `
     <section class="panel next-goal"><h2>🏆 Alle milepæle er i hus — legende!</h2></section>`}
+
+    ${hunt ? `
+    <section class="panel daily-hunt" onclick="openModal('${hunt.id}')">
+      <h2>🔎 Dagens jagt</h2>
+      <div class="daily-hunt-body">
+        <div class="daily-hunt-cover">${coverHTML(hunt)}</div>
+        <div class="daily-hunt-info">
+          <strong>${escapeHTML(hunt.title)} <span class="mini-year">(${hunt.year})</span></strong>
+          <p>${escapeHTML(hunt.desc)}</p>
+          <small>Michaels livsfase: ${PHASE_LABELS[mjPhase(hunt.year)]} · Ny jagt i morgen! 🌅</small>
+        </div>
+      </div>
+    </section>` : ""}
 
     <section class="panel">
       <h2>📚 Samlingen del for del</h2>
@@ -482,28 +538,41 @@ function albumCard(album) {
 function renderAchievements() {
   const s = computeStats();
   const earned = earnedSet(s);
+  const lv = levelInfo(s.owned);
+
+  const badgeHTML = a => {
+    const won = earned.has(a.id);
+    const [now, goal] = achievementProgress(a, s);
+    const pct = goal ? Math.round((Math.min(now, goal) / goal) * 100) : 0;
+    return `
+      <div class="badge ${won ? "badge-won" : ""}">
+        <span class="badge-emoji">${a.emoji}</span>
+        <strong>${escapeHTML(a.title)}</strong>
+        <span class="badge-desc">${escapeHTML(a.desc)}</span>
+        ${won
+          ? `<span class="badge-status">Optjent! 🎉</span>`
+          : `<div class="bar"><div class="bar-fill gold-fill" style="width:${pct}%"></div></div>
+             <small>${now} af ${goal}</small>`}
+      </div>`;
+  };
+
+  const groupSections = Object.entries(ACHIEVEMENT_GROUPS).map(([key, label]) => {
+    const list = ACHIEVEMENTS.filter(a => a.group === key);
+    if (!list.length) return "";
+    const wonCount = list.filter(a => earned.has(a.id)).length;
+    return `
+      <h2 class="badge-group-head">${label} <span class="count-pill">${wonCount}/${list.length}</span></h2>
+      <section class="badge-grid">${list.map(badgeHTML).join("")}</section>`;
+  }).join("");
+
   $("#view").innerHTML = `
     <section class="collection-head">
       <h1>Milepæle <span class="count-pill">${earned.size}/${ACHIEVEMENTS.length}</span></h1>
-      <p class="page-sub">Hver plade du finder, låser nye trofæer op! 🏆</p>
+      <p class="page-sub">Dit niveau lige nu: ${lv.cur.emoji} <strong>${escapeHTML(lv.cur.title)}</strong>
+        ${lv.next ? `— ${lv.toNext} ${lv.toNext === 1 ? "plade" : "plader"} til næste niveau!` : "— toppen er nået! 👑"}
+        Hver plade, stjerne og bemærkning låser nye trofæer op. 🏆</p>
     </section>
-    <section class="badge-grid">
-      ${ACHIEVEMENTS.map(a => {
-        const won = earned.has(a.id);
-        const [now, goal] = achievementProgress(a, s);
-        const pct = goal ? Math.round((Math.min(now, goal) / goal) * 100) : 0;
-        return `
-          <div class="badge ${won ? "badge-won" : ""}">
-            <span class="badge-emoji">${a.emoji}</span>
-            <strong>${escapeHTML(a.title)}</strong>
-            <span class="badge-desc">${escapeHTML(a.desc)}</span>
-            ${won
-              ? `<span class="badge-status">Optjent! 🎉</span>`
-              : `<div class="bar"><div class="bar-fill gold-fill" style="width:${pct}%"></div></div>
-                 <small>${now} af ${goal}</small>`}
-          </div>`;
-      }).join("")}
-    </section>`;
+    ${groupSections}`;
 }
 
 /* ---------- Album-modal ---------- */
@@ -643,6 +712,19 @@ async function init() {
     }
   }
   if (migrated) await persist();
+
+  // Besøgs-tracking: tæl aktive dage og dage-i-træk (til badges)
+  const today = new Date().toISOString().slice(0, 10);
+  if (state.lastVisitDay !== today) {
+    const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+    state.visitStreak = state.lastVisitDay === yesterday ? (state.visitStreak || 0) + 1 : 1;
+    state.visitDayCount = (state.visitDayCount || 0) + 1;
+    state.lastVisitDay = today;
+    persist();
+  }
+  // Sørg for at nuværende niveau ikke fejres som "level up" ved næste køb
+  state.seenLevel = Math.max(state.seenLevel || 0, levelInfo(computeStats().owned).idx);
+
   // Marker allerede optjente milepæle som set, så gamle badges
   // ikke fejres igen ved hver genindlæsning
   const earned = earnedSet(computeStats());

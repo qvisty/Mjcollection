@@ -176,68 +176,190 @@ const ALBUMS = [
 ];
 
 /* ============================================================
+   Samler-niveauer — jo flere plader, jo sejere titel!
+   ============================================================ */
+
+const LEVELS = [
+  { min: 0,  emoji: "🎧", title: "Ny i klubben" },
+  { min: 1,  emoji: "🌱", title: "Pladespirer" },
+  { min: 5,  emoji: "💿", title: "Vinyl-ven" },
+  { min: 10, emoji: "🎶", title: "Rigtig samler" },
+  { min: 15, emoji: "🕺", title: "Moonwalker i træning" },
+  { min: 20, emoji: "🧟", title: "Thriller-jæger" },
+  { min: 30, emoji: "🎩", title: "Vinyl-mester" },
+  { min: 40, emoji: "🌟", title: "Levende legende" },
+  { min: 49, emoji: "👑", title: "KING OF POP" },
+];
+
+/* Michaels livsfase, da pladen udkom (født 29. august 1958) */
+function mjPhase(year) {
+  if (year <= 1970) return "barn";   // 11-12 år
+  if (year <= 1977) return "teen";   // 13-19 år
+  if (year <= 1989) return "ung";    // 20-31 år — verdensstjernen
+  if (year <= 2001) return "konge";  // 32-43 år — King of Pop
+  return "evig";                     // arven — for evigt ung
+}
+
+const PHASE_LABELS = {
+  barn: "Barnestjernen (11-12 år)",
+  teen: "Teenageren (13-19 år)",
+  ung: "Verdensstjernen (20'erne)",
+  konge: "King of Pop (30'erne og 40'erne)",
+  evig: "For evigt ung (arven)",
+};
+
+/* ============================================================
    Milepæle (badges) — det motiverende lag!
    `test(stats)` afgør om badgen er optjent.
    `progress(stats)` returnerer [nu, mål] til statuslinjen.
+   `group` styrer, hvilken sektion badgen vises i.
    ============================================================ */
 
+const ACHIEVEMENT_GROUPS = {
+  samling: "📀 Samlingen vokser",
+  rejse: "🎂 Michaels rejse",
+  trofae: "🏆 Store trofæer",
+  tema: "🎨 Temajagt",
+  flid: "✍️ Flid og kærlighed",
+};
+
 const ACHIEVEMENTS = [
-  { id: "first", emoji: "🎉", title: "Den første plade!",
+  /* --- 📀 Samlingen vokser --- */
+  { id: "first", group: "samling", emoji: "🎉", title: "Den første plade!",
     desc: "Føj din allerførste LP til samlingen.",
     progress: s => [Math.min(s.owned, 1), 1] },
-  { id: "five", emoji: "🌟", title: "Godt i gang",
+  { id: "five", group: "samling", emoji: "🌟", title: "Godt i gang",
     desc: "Saml 5 plader.",
     progress: s => [Math.min(s.owned, 5), 5] },
-  { id: "ten", emoji: "💿", title: "Rigtig samler",
+  { id: "ten", group: "samling", emoji: "💿", title: "Rigtig samler",
     desc: "Saml 10 plader.",
     progress: s => [Math.min(s.owned, 10), 10] },
-  { id: "twentyfive", emoji: "🕺", title: "Superfan",
+  { id: "twentyfive", group: "samling", emoji: "🕺", title: "Superfan",
     desc: "Saml 25 plader.",
     progress: s => [Math.min(s.owned, 25), 25] },
-  { id: "half", emoji: "🚀", title: "Halvvejs!",
+  { id: "half", group: "samling", emoji: "🚀", title: "Halvvejs!",
     desc: "Ej halvdelen af alle plader på listen.",
     progress: s => [s.owned, Math.ceil(s.total / 2)] },
-  { id: "complete", emoji: "🏆", title: "Komplet samling!",
+  { id: "complete", group: "samling", emoji: "🏆", title: "Komplet samling!",
     desc: "Ej ALLE plader på listen. Vildt!",
     progress: s => [s.owned, s.total] },
-  { id: "thrillernight", emoji: "🧟", title: "Thriller Night",
+
+  /* --- 🎂 Michaels rejse (hans alder på pladerne) --- */
+  { id: "thirteen", group: "rejse", emoji: "🎤", title: "13 år og verdensstjerne",
+    desc: "Ej Got to Be There — Michaels første soloalbum, indspillet da han var 13.",
+    needsAlbums: ["got-to-be-there"] },
+  { id: "origin", group: "rejse", emoji: "🌱", title: "Hvor det hele begyndte",
+    desc: "Ej debutpladen Diana Ross Presents the Jackson 5 fra 1969 — Michael var 11 år!",
+    needsAlbums: ["diana-ross-presents"] },
+  { id: "lilmichael", group: "rejse", emoji: "👦", title: "Lille Michael",
+    desc: "Ej en plade fra før Michael fyldte 13 (1969-1970).",
+    progress: s => [Math.min(s.phases.barn || 0, 1), 1] },
+  { id: "teenidol", group: "rejse", emoji: "🕶️", title: "Teen-idol",
+    desc: "Saml 3 plader fra Michaels teenageår (1971-1977).",
+    progress: s => [Math.min(s.phases.teen || 0, 3), 3] },
+  { id: "lifejourney", group: "rejse", emoji: "🎂", title: "Hele rejsen",
+    desc: "Ej mindst én plade fra hver af Michaels fem livsfaser — fra barnestjerne til for evigt ung.",
+    progress: s => [s.phasesCovered, 5] },
+  { id: "decademaster", group: "rejse", emoji: "🗓️", title: "Årti-mesteren",
+    desc: "Ej mindst én plade fra hvert årti: 60'erne, 70'erne, 80'erne, 90'erne, 00'erne og 10'erne.",
+    progress: s => [s.decadesOwned, 6] },
+
+  /* --- 🏆 Store trofæer --- */
+  { id: "thrillernight", group: "trofae", emoji: "🧟", title: "Thriller Night",
     desc: "Ej verdens bedst sælgende album: Thriller.",
     needsAlbums: ["thriller"] },
-  { id: "kingofpop", emoji: "👑", title: "King of Pop",
+  { id: "kingofpop", group: "trofae", emoji: "👑", title: "King of Pop",
     desc: "Ej de fire store: Off the Wall, Thriller, Bad og Dangerous.",
     needsAlbums: ["off-the-wall", "thriller", "bad", "dangerous"] },
-  { id: "glove", emoji: "🧤", title: "Den hvide handske",
+  { id: "glove", group: "trofae", emoji: "🧤", title: "Den hvide handske",
     desc: "Ej alle 12 solo-studiealbum.",
     needsCategory: "studie" },
-  { id: "motownstar", emoji: "✋", title: "Motown-stjerne",
+  { id: "motownstar", group: "trofae", emoji: "✋", title: "Motown-stjerne",
     desc: "Saml 5 Jackson 5-plader.",
     progress: s => [Math.min(s.byCategory.jackson5 || 0, 5), 5] },
-  { id: "motownmaster", emoji: "🎩", title: "Motown-mester",
+  { id: "motownmaster", group: "trofae", emoji: "🎩", title: "Motown-mester",
     desc: "Ej alle Jackson 5-plader.",
     needsCategory: "jackson5" },
-  { id: "familyband", emoji: "👨‍👦‍👦", title: "Familiebandet",
+  { id: "familyband", group: "trofae", emoji: "👨‍👦‍👦", title: "Familiebandet",
     desc: "Ej alle plader af The Jacksons.",
     needsCategory: "jacksons" },
-  { id: "seventies", emoji: "🪩", title: "70'er-fan",
-    desc: "Saml 10 plader fra 1970'erne.",
-    progress: s => [Math.min(s.byDecade[1970] || 0, 10), 10] },
-  { id: "eighties", emoji: "📼", title: "80'er-ikon",
-    desc: "Saml 5 plader fra 1980'erne.",
-    progress: s => [Math.min(s.byDecade[1980] || 0, 5), 5] },
-  { id: "treasure", emoji: "🗺️", title: "Skattejæger",
+  { id: "moviestar", group: "trofae", emoji: "🎬", title: "Filmstjernen",
+    desc: "Ej alle soundtracks — The Wiz, E.T. og This Is It.",
+    needsCategory: "soundtrack" },
+  { id: "anthologist", group: "trofae", emoji: "📚", title: "Opsamleren",
+    desc: "Ej alle opsamlingsplader.",
+    needsCategory: "opsamling" },
+  { id: "specialist", group: "trofae", emoji: "✨", title: "Specialisten",
+    desc: "Ej alle særudgivelser — remixer, jubilæer og skjulte skatte.",
+    needsCategory: "special" },
+  { id: "treasure", group: "trofae", emoji: "🗺️", title: "Skattejæger",
     desc: "Find en af de sjældne plader (markeret med ✨).",
-    test: s => s.rareOwned >= 1,
     progress: s => [Math.min(s.rareOwned, 1), 1] },
-  { id: "moonwalker", emoji: "🌙", title: "Moonwalker",
+  { id: "moonwalker", group: "trofae", emoji: "🌙", title: "Moonwalker",
     desc: "Find 3 sjældne plader. Du er en ægte pladejæger!",
     progress: s => [Math.min(s.rareOwned, 3), 3] },
-  { id: "wishmaker", emoji: "⭐", title: "Ønskejagten",
+
+  /* --- 🎨 Temajagt (ord og temaer der går igen) --- */
+  { id: "dancefloor", group: "tema", emoji: "🪩", title: "Dansegulvet",
+    desc: "Ej begge plader med dans i titlen: Dancing Machine og Blood on the Dance Floor.",
+    needsAlbums: ["dancing-machine", "blood-on-the-dance-floor"] },
+  { id: "wildfriends", group: "tema", emoji: "🐀", title: "Vilde venner",
+    desc: "Ej Ben (om en rotte) og E.T. (om en rumven) — Michaels to mest usædvanlige venskaber.",
+    needsAlbums: ["ben", "et-storybook"] },
+  { id: "xmas", group: "tema", emoji: "🎄", title: "Jackson-jul",
+    desc: "Ej Jackson 5 Christmas Album — december bliver aldrig det samme igen.",
+    needsAlbums: ["christmas-album"] },
+  { id: "livewire", group: "tema", emoji: "🎸", title: "Live og direkte",
+    desc: "Ej begge livealbum: The Jacksons Live! og In Japan!",
+    needsAlbums: ["the-jacksons-live", "in-japan"] },
+  { id: "seventies", group: "tema", emoji: "🕰️", title: "70'er-fan",
+    desc: "Saml 10 plader fra 1970'erne.",
+    progress: s => [Math.min(s.byDecade[1970] || 0, 10), 10] },
+  { id: "eighties", group: "tema", emoji: "📼", title: "80'er-ikon",
+    desc: "Saml 5 plader fra 1980'erne.",
+    progress: s => [Math.min(s.byDecade[1980] || 0, 5), 5] },
+  { id: "nineties", group: "tema", emoji: "📟", title: "90'er-holdet",
+    desc: "Ej alle plader fra 1990'erne.",
+    progress: s => [s.byDecade[1990] || 0, s.decadeTotals[1990] || 0] },
+
+  /* --- ✍️ Flid og kærlighed (brug siden!) --- */
+  { id: "wishmaker", group: "flid", emoji: "⭐", title: "Ønskejagten",
     desc: "Giv 3 plader ønske-stjerner, så du ved, hvad du jagter.",
     progress: s => [Math.min(s.wishlisted, 3), 3] },
-  { id: "dream", emoji: "💭", title: "Drømmepladen",
+  { id: "wish10", group: "flid", emoji: "🌠", title: "Ønskebrønden",
+    desc: "Hav 10 plader på ønskelisten på samme tid.",
+    progress: s => [Math.min(s.wishlisted, 10), 10] },
+  { id: "dream", group: "flid", emoji: "💭", title: "Drømmepladen",
     desc: "Markér en plade med ⭐⭐⭐ — dit allerhøjeste ønske.",
     progress: s => [Math.min(s.dreamMarked, 1), 1] },
-  { id: "notes", emoji: "✍️", title: "Pladenørden",
+  { id: "notes", group: "flid", emoji: "✍️", title: "Pladenørden",
     desc: "Skriv en bemærkning på en plade — fx hvor du fandt den, eller hvor du har set den til salg.",
     progress: s => [Math.min(s.withNotes, 1), 1] },
+  { id: "notes5", group: "flid", emoji: "📖", title: "Historiefortælleren",
+    desc: "Skriv bemærkninger på 5 plader.",
+    progress: s => [Math.min(s.withNotes, 5), 5] },
+  { id: "notes15", group: "flid", emoji: "📚", title: "Pladebibliotekaren",
+    desc: "Skriv bemærkninger på 15 plader — en hel dagbog om samlingen!",
+    progress: s => [Math.min(s.withNotes, 15), 15] },
+  { id: "archivist", group: "flid", emoji: "🗃️", title: "Arkivaren",
+    desc: "Udfyld stand på 5 af dine plader.",
+    progress: s => [Math.min(s.withCondition, 5), 5] },
+  { id: "photographer", group: "flid", emoji: "📸", title: "Fotografen",
+    desc: "Sæt dit eget billede på en plade — fx et foto af netop dit eksemplar.",
+    progress: s => [Math.min(s.withOwnCover, 1), 1] },
+  { id: "visitor5", group: "flid", emoji: "📅", title: "Fast gæst",
+    desc: "Brug siden på 5 forskellige dage.",
+    progress: s => [Math.min(s.activeDays, 5), 5] },
+  { id: "visitor15", group: "flid", emoji: "🪑", title: "Stamgæst",
+    desc: "Brug siden på 15 forskellige dage.",
+    progress: s => [Math.min(s.activeDays, 15), 15] },
+  { id: "visitor30", group: "flid", emoji: "🏠", title: "Klubhuset",
+    desc: "Brug siden på 30 forskellige dage — det her er DIT sted.",
+    progress: s => [Math.min(s.activeDays, 30), 30] },
+  { id: "streak3", group: "flid", emoji: "🔥", title: "Varm streak",
+    desc: "Besøg siden 3 dage i træk.",
+    progress: s => [Math.min(s.streak, 3), 3] },
+  { id: "streak7", group: "flid", emoji: "🌋", title: "Brandvarm!",
+    desc: "Besøg siden 7 dage i træk — Michael ville være stolt.",
+    progress: s => [Math.min(s.streak, 7), 7] },
 ];

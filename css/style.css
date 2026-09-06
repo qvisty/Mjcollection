@@ -154,6 +154,24 @@ main {
   letter-spacing: .03em;
 }
 
+.level-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .7rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--gold);
+  border-radius: 14px;
+  padding: .55rem .95rem;
+  margin: .3rem 0 .6rem;
+  text-align: left;
+}
+
+.level-chip .level-emoji { font-size: 1.9rem; }
+
+.level-chip strong { color: var(--gold-soft); }
+
+.level-chip small { color: var(--text-dim); }
+
 .motivation {
   font-size: 1.1rem;
   color: var(--gold-soft);
@@ -631,7 +649,42 @@ main {
 
 .cf-year { color: rgba(255, 255, 255, .75); font-size: .75rem; font-weight: 600; }
 
+/* ---------- Dagens jagt ---------- */
+
+.daily-hunt { cursor: pointer; transition: transform .15s; }
+
+.daily-hunt:hover { transform: translateY(-2px); }
+
+.daily-hunt-body { display: flex; gap: 1.2rem; align-items: center; }
+
+.daily-hunt-cover {
+  width: 110px;
+  flex-shrink: 0;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.daily-hunt-info p { color: var(--text-dim); margin: .3rem 0; line-height: 1.5; }
+
+.daily-hunt-info small { color: var(--gold-soft); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .daily-hunt-body { flex-direction: column; align-items: flex-start; }
+}
+
 /* ---------- Milepæle ---------- */
+
+.badge-group-head {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: .05em;
+  margin: 2rem 0 .9rem;
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+}
 
 .badge-grid {
   display: grid;
