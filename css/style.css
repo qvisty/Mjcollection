@@ -562,6 +562,46 @@ main {
 
 .result-count { color: var(--text-dim); font-size: .85rem; margin: -.6rem 0 1rem; }
 
+/* Tracklister — bevidst nedtonet og enkel */
+.tracks-box { margin: .3rem 0 .9rem; }
+
+.tracks-head {
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: .2rem 0 .35rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.tracks-count {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  color: var(--text-dim);
+  font-size: .72rem;
+  border-radius: 999px;
+  padding: .1rem .5rem;
+}
+
+.tracklist {
+  margin: 0;
+  padding-left: 1.5rem;
+  columns: 2 220px;
+  column-gap: 2rem;
+  font-size: .84rem;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+
+.tracklist li { break-inside: avoid; }
+
+.tracklist li::marker { color: #574b70; font-size: .78rem; }
+
+.t-time { color: #6b6180; font-size: .74rem; margin-left: .45rem; }
+
+.tracks-none { color: var(--text-dim); font-size: .84rem; }
+
 /* Bemærkninger */
 .note-dot {
   display: inline-block;

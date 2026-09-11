@@ -607,6 +607,10 @@ function openModal(id) {
           <span class="modal-wish-text">${(r.wish || 0) > 0 ? WISH_LABELS[r.wish] : "Klik på stjernerne for at sætte den på ønskelisten"}</span>
         </div>`}
 
+        <div class="tracks-box" id="tracks-box" data-album="${id}">
+          <span class="tracks-none">🎶 Henter sangene…</span>
+        </div>
+
         <div class="note-box">
           <label for="note-input">💬 Min bemærkning</label>
           <textarea id="note-input" rows="3"
@@ -640,6 +644,25 @@ function openModal(id) {
     </div>`;
   document.body.appendChild(overlay);
   document.body.classList.add("no-scroll");
+  loadTracks(album);
+}
+
+/* Udfylder tracklisten i modalen, når iTunes-svaret er klar */
+async function loadTracks(album) {
+  const tracks = await getTracks(album);
+  const box = document.getElementById("tracks-box");
+  if (!box || box.dataset.album !== album.id) return; // modalen er lukket eller skiftet
+  if (tracks === undefined) {
+    box.innerHTML = `<span class="tracks-none">🎶 Sangene kunne ikke hentes lige nu.</span>`;
+  } else if (!tracks || !tracks.length) {
+    box.innerHTML = `<span class="tracks-none">🎶 Tracklisten er ikke fundet for denne sjældne plade.</span>`;
+  } else {
+    box.innerHTML = `
+      <h3 class="tracks-head">🎵 Sange på pladen <span class="tracks-count">${tracks.length}</span></h3>
+      <ol class="tracklist">
+        ${tracks.map(t => `<li>${escapeHTML(t.n)}${t.d ? `<span class="t-time">${t.d}</span>` : ""}</li>`).join("")}
+      </ol>`;
+  }
 }
 
 function closeModal() {

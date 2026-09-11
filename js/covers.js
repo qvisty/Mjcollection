@@ -48,7 +48,7 @@ async function wikiQueryImages(titles) {
 
 /* --- Ekstra kilde: iTunes Search API (via JSONP, ingen nøgle) --- */
 
-function itunesSearch(term) {
+function jsonp(src) {
   return new Promise(resolve => {
     const cb = "itcb_" + Math.random().toString(36).slice(2);
     const script = document.createElement("script");
@@ -61,10 +61,14 @@ function itunesSearch(term) {
     const timer = setTimeout(() => done(null), 8000);
     window[cb] = done;
     script.onerror = () => done(null);
-    script.src = "https://itunes.apple.com/search?media=music&entity=album&limit=10" +
-      `&term=${encodeURIComponent(term)}&callback=${cb}`;
+    script.src = `${src}&callback=${cb}`;
     document.head.appendChild(script);
   });
+}
+
+function itunesSearch(term) {
+  return jsonp("https://itunes.apple.com/search?media=music&entity=album&limit=10" +
+    `&term=${encodeURIComponent(term)}`);
 }
 
 function normTitle(s) {
@@ -74,9 +78,10 @@ function normTitle(s) {
     .replace(/\s+/g, " ").trim();
 }
 
-/* Returnerer en URL, null (svar men intet match — spørg ikke igen)
-   eller undefined (netværksfejl — prøv igen næste gang). */
-async function itunesCover(album) {
+/* Finder albummet hos iTunes. Returnerer hittet, null (svar men
+   intet match — spørg ikke igen) eller undefined (netværksfejl —
+   prøv igen næste gang). Bruges af både covers og tracklister. */
+async function itunesFindAlbum(album) {
   const data = await itunesSearch(`michael jackson ${album.title}`)
     || await itunesSearch(`${album.artist} ${album.title}`);
   if (!data || !data.results) return undefined;
@@ -86,6 +91,12 @@ async function itunesCover(album) {
     const artist = (r.artistName || "").toLowerCase();
     return artist.includes("jackson") && (got.includes(want) || want.includes(got)) && got;
   });
+  return hit || null;
+}
+
+async function itunesCover(album) {
+  const hit = await itunesFindAlbum(album);
+  if (hit === undefined) return undefined;
   if (!hit || !hit.artworkUrl100) return null;
   return hit.artworkUrl100.replace("100x100", "600x600");
 }
