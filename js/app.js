@@ -533,6 +533,8 @@ function albumCard(album) {
         <h3>${escapeHTML(album.title)}</h3>
         <p class="card-meta">${escapeHTML(album.artist)} · ${album.year}</p>
         <span class="cat-tag" style="--cat:${cat.color}">${cat.emoji} ${cat.label}</span>
+        ${r.owned || !PRICE_BANDS[album.price] ? "" :
+          `<span class="price-tag" title="${escapeHTML(PRICE_BANDS[album.price].hint)}">💰 ${escapeHTML(PRICE_BANDS[album.price].label)}</span>`}
         ${r.notes && r.notes.trim() ? `<span class="note-dot" title="${escapeHTML(r.notes.trim())}">💬</span>` : ""}
       </div>
       <div class="card-actions" onclick="event.stopPropagation()">
@@ -667,10 +669,14 @@ function openModal(id) {
 function buyBoxHTML(album) {
   const band = PRICE_BANDS[album.price];
   const q = `${album.artist} ${album.title}`.replace(/\s+/g, " ").trim();
+  // Google-søgning der rammer den specifikke presning: titel i
+  // anførselstegn plus år og pladeselskab, som adskiller udgaverne
+  const googleQ = `"${album.title}" ${album.artist} vinyl LP ${album.year} ${album.label} køb`;
   const shops = [
     ["Discogs", `https://www.discogs.com/search/?q=${encodeURIComponent(q)}&format_exact=Vinyl&type=release`],
     ["DBA", `https://www.dba.dk/recommerce/forsale/search?q=${encodeURIComponent(album.title + " vinyl")}`],
     ["eBay", `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q + " vinyl LP")}`],
+    ["Google", `https://www.google.com/search?q=${encodeURIComponent(googleQ)}`],
   ];
   return `
     <div class="buy-box">

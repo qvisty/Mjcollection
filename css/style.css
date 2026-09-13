@@ -1008,3 +1008,17 @@ main {
 .footer-actions { display: flex; justify-content: center; gap: .7rem; margin: .8rem 0; }
 
 .footer-note { font-size: .78rem; opacity: .8; }
+
+/* Prisniveau på kortet — lille og diskret */
+.price-tag {
+  display: inline-block;
+  margin-left: .35rem;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--gold-soft);
+  border: 1px solid rgba(232, 185, 60, .4);
+  border-radius: 999px;
+  padding: .18rem .5rem;
+  white-space: nowrap;
+  cursor: help;
+}
