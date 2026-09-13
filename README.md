@@ -12,6 +12,8 @@ Bygget som ren HTML/CSS/JavaScript — intet build-step, kører direkte på GitH
   (kategori, årti, status, sjældne plader) og sortering.
 - **Milepæle**: 18 badges der låses op undervejs — med konfetti 🎉
 - På hver plade kan man gemme **stand, fundet-dato, pris, noter og eget foto** (URL).
+- **Køb-links**: på plader man mangler vises et vejledende prisniveau samt
+  søge-links til Discogs, DBA og eBay.
 - **Backup**: eksportér/importér hele samlingen som en JSON-fil (knapper i bunden).
 
 ## Hvor gemmes data?
@@ -133,3 +135,7 @@ js/app.js            Routing, visninger, filtre, konfetti
 ```
 
 `rare: true` markerer pladen som sjælden (tæller med i Skattejæger-badgen ✨).
+
+`price` angiver vejledende prisniveau: `lav`, `mellem`, `hoej` eller
+`megethoej`. Beløbsintervallerne står samlet i `PRICE_BANDS` i toppen af
+`js/data.js` og kan justeres ét sted, hvis markedet ændrer sig.

@@ -420,6 +420,11 @@ function filteredAlbums() {
     case "titel": list.sort((a, b) => a.title.localeCompare(b.title, "da")); break;
     case "senest": list.sort((a, b) => (rec(b.id).ownedDate || "").localeCompare(rec(a.id).ownedDate || "")); break;
     case "oensker": list.sort((a, b) => (rec(b.id).wish || 0) - (rec(a.id).wish || 0) || a.year - b.year); break;
+    case "pris": {
+      const rank = { lav: 0, mellem: 1, hoej: 2, megethoej: 3 };
+      list.sort((a, b) => (rank[a.price] ?? 9) - (rank[b.price] ?? 9) || a.year - b.year);
+      break;
+    }
   }
   return list;
 }
@@ -488,6 +493,7 @@ function renderCollection() {
           <option value="titel"   ${filters.sort === "titel" ? "selected" : ""}>Titel (A–Å)</option>
           <option value="senest"  ${filters.sort === "senest" ? "selected" : ""}>Senest tilføjet</option>
           <option value="oensker" ${filters.sort === "oensker" ? "selected" : ""}>Flest ønske-stjerner</option>
+          <option value="pris"    ${filters.sort === "pris" ? "selected" : ""}>💰 Billigst først</option>
         </select>
         ${filtersActive() ? `<button class="btn-reset" onclick="resetFilters()">✕ Nulstil filtre</button>` : ""}
       </div>
@@ -613,6 +619,8 @@ function openModal(id) {
           <span class="modal-wish-text">${(r.wish || 0) > 0 ? WISH_LABELS[r.wish] : "Klik på stjernerne for at sætte den på ønskelisten"}</span>
         </div>`}
 
+        ${r.owned ? "" : buyBoxHTML(album)}
+
         <div class="tracks-box" id="tracks-box" data-album="${id}">
           <span class="tracks-none">🎶 Henter sangene…</span>
         </div>
@@ -651,6 +659,31 @@ function openModal(id) {
   document.body.appendChild(overlay);
   document.body.classList.add("no-scroll");
   loadTracks(album);
+}
+
+/* Hvor kan pladen købes? Søge-links til de steder, vinyl handles.
+   Ingen live-priser (det kræver betalte API-nøgler) — i stedet et
+   vejledende prisniveau plus direkte link til Discogs' dagspriser. */
+function buyBoxHTML(album) {
+  const band = PRICE_BANDS[album.price];
+  const q = `${album.artist} ${album.title}`.replace(/\s+/g, " ").trim();
+  const shops = [
+    ["Discogs", `https://www.discogs.com/search/?q=${encodeURIComponent(q)}&format_exact=Vinyl&type=release`],
+    ["DBA", `https://www.dba.dk/recommerce/forsale/search?q=${encodeURIComponent(album.title + " vinyl")}`],
+    ["eBay", `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q + " vinyl LP")}`],
+  ];
+  return `
+    <div class="buy-box">
+      <div class="buy-price">
+        <span class="buy-amount">💰 ${band ? band.label : "Pris ukendt"}</span>
+        ${band ? `<span class="buy-hint">${band.hint}</span>` : ""}
+      </div>
+      <div class="buy-links">
+        ${shops.map(([name, url]) =>
+          `<a class="buy-link" href="${url}" target="_blank" rel="noopener noreferrer">${name} ↗</a>`).join("")}
+      </div>
+      <small class="buy-note">Vejledende pris for et brugt eksemplar i pæn stand — den rigtige dagspris står på Discogs.</small>
+    </div>`;
 }
 
 /* Udfylder tracklisten i modalen, når iTunes-svaret er klar */
