@@ -25,6 +25,11 @@ const PRICE_BANDS = {
   megethoej: { label: "800 kr. og op",   hint: "Sjælden — undersøg prisen grundigt" },
 };
 
+/* Sjældenhed:
+     rare:  true  → ✨ Sjælden (svær at opdrive)
+     grail: true  → 💎 Hellig gral (de absolut sværeste — nærmest
+                    umulige at finde; grail forudsætter rare) */
+
 const ALBUMS = [
   /* ---------- Solo-studiealbum ---------- */
   { id: "got-to-be-there", price: "mellem", title: "Got to Be There", artist: "Michael Jackson", year: 1972, category: "studie", label: "Motown",
@@ -101,7 +106,7 @@ const ALBUMS = [
   { id: "joyful-jukebox-music", price: "hoej", title: "Joyful Jukebox Music", artist: "The Jackson 5", year: 1976, category: "jackson5", label: "Motown", rare: true,
     wiki: "Joyful Jukebox Music",
     desc: "Udgivet af Motown efter brødrene var rejst — svær at finde og et rigtigt samlerfund!" },
-  { id: "boogie", price: "megethoej", title: "Boogie", artist: "The Jacksons 5", year: 1979, category: "jackson5", label: "Motown", rare: true,
+  { id: "boogie", price: "megethoej", title: "Boogie", artist: "The Jacksons 5", year: 1979, category: "jackson5", label: "Motown", rare: true, grail: true,
     wiki: "Boogie (album)",
     desc: "En af de allersjældneste Jackson-plader overhovedet — kun få eksemplarer blev solgt. Den ultimative jagt!" },
   { id: "greatest-hits-j5", price: "lav", title: "Greatest Hits", artist: "The Jackson 5", year: 1971, category: "jackson5", label: "Motown",
@@ -138,7 +143,7 @@ const ALBUMS = [
   { id: "the-wiz", price: "mellem", title: "The Wiz", artist: "Diverse (med Michael Jackson)", year: 1978, category: "soundtrack", label: "MCA",
     wiki: "The Wiz (soundtrack)",
     desc: "Fra filmen hvor Michael spiller Fugleskræmslet — \"Ease on Down the Road\" med Diana Ross." },
-  { id: "et-storybook", price: "megethoej", title: "E.T. the Extra-Terrestrial", artist: "Michael Jackson", year: 1982, category: "soundtrack", label: "MCA", rare: true,
+  { id: "et-storybook", price: "megethoej", title: "E.T. the Extra-Terrestrial", artist: "Michael Jackson", year: 1982, category: "soundtrack", label: "MCA", rare: true, grail: true,
     wiki: "E.T. the Extra-Terrestrial (soundtrack)",
     desc: "Michael fortæller historien om E.T. og synger \"Someone in the Dark\". Blev trukket tilbage — meget sjælden!" },
   { id: "this-is-it", price: "mellem", title: "This Is It", artist: "Michael Jackson", year: 2009, category: "soundtrack", label: "Epic",
@@ -306,6 +311,9 @@ const ACHIEVEMENTS = [
   { id: "treasure", group: "trofae", emoji: "🗺️", title: "Skattejæger",
     desc: "Find en af de sjældne plader (markeret med ✨).",
     progress: s => [Math.min(s.rareOwned, 1), 1] },
+  { id: "grail", group: "trofae", emoji: "💎", title: "Den hellige gral",
+    desc: "Ej en af de to allersjældneste plader — Boogie eller E.T. Det lykkes kun for de færreste samlere!",
+    progress: s => [Math.min(s.grailOwned, 1), 1] },
   { id: "moonwalker", group: "trofae", emoji: "🌙", title: "Moonwalker",
     desc: "Find 3 sjældne plader. Du er en ægte pladejæger!",
     progress: s => [Math.min(s.rareOwned, 3), 3] },

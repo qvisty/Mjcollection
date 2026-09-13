@@ -31,12 +31,24 @@ function coverHTML(album, cls = "") {
   return coverFallbackHTML(album);
 }
 
+/* Sjældenheds-mærke: graler får deres eget glimtende ikon */
+function rarityBadgeHTML(album, inline = false) {
+  const cls = inline ? " inline" : "";
+  if (album.grail) {
+    return `<span class="grail-badge${cls}" title="Hellig gral — en af de absolut sværeste plader at opdrive">💎 Hellig gral</span>`;
+  }
+  if (album.rare) {
+    return `<span class="rare-badge${cls}" title="Sjælden plade">✨ Sjælden</span>`;
+  }
+  return "";
+}
+
 /* ---------- Statistik ---------- */
 
 function computeStats() {
   const s = {
     total: ALBUMS.length, owned: 0, wishlisted: 0, dreamMarked: 0, rareOwned: 0,
-    withNotes: 0, withCondition: 0, withOwnCover: 0,
+    withNotes: 0, withCondition: 0, withOwnCover: 0, grailOwned: 0,
     byCategory: {}, categoryTotals: {}, byDecade: {}, decadeTotals: {}, phases: {},
     activeDays: state?.visitDayCount || 0, streak: state?.visitStreak || 0,
   };
@@ -56,6 +68,7 @@ function computeStats() {
       s.byDecade[dec] = (s.byDecade[dec] || 0) + 1;
       s.phases[mjPhase(a.year)] = (s.phases[mjPhase(a.year)] || 0) + 1;
       if (a.rare) s.rareOwned++;
+      if (a.grail) s.grailOwned++;
     }
   }
   s.phasesCovered = Object.keys(s.phases).length;
@@ -423,7 +436,8 @@ const SORTERS = {
   "oensker":    { label: "⭐ Flest ønske-stjerner", fn: (a, b) => (rec(b.id).wish || 0) - (rec(a.id).wish || 0) || a.year - b.year },
   "pris":       { label: "💰 Billigst først", fn: (a, b) => (PRICE_RANK[a.price] ?? 9) - (PRICE_RANK[b.price] ?? 9) || a.year - b.year },
   "pris-ned":   { label: "💰 Dyrest først", fn: (a, b) => (PRICE_RANK[b.price] ?? -1) - (PRICE_RANK[a.price] ?? -1) || a.year - b.year },
-  "sjaelden":   { label: "✨ Sjældne først", fn: (a, b) => (b.rare ? 1 : 0) - (a.rare ? 1 : 0) || a.year - b.year },
+  "sjaelden":   { label: "✨ Sjældne først", fn: (a, b) =>
+                    ((b.grail ? 2 : 0) + (b.rare ? 1 : 0)) - ((a.grail ? 2 : 0) + (a.rare ? 1 : 0)) || a.year - b.year },
   "mangler":    { label: "🔎 Mangler først", fn: (a, b) => (rec(a.id).owned ? 1 : 0) - (rec(b.id).owned ? 1 : 0) || a.year - b.year },
   "tilfaeldig": { label: "🎲 Bland tilfældigt", fn: (a, b) => shuffleRank(a.id) - shuffleRank(b.id) },
 };
@@ -545,11 +559,11 @@ function albumCard(album) {
   const r = rec(album.id);
   const cat = CATEGORIES[album.category];
   return `
-    <article class="card ${r.owned ? "card-owned" : ""}" onclick="openModal('${album.id}')">
+    <article class="card ${r.owned ? "card-owned" : ""} ${album.grail ? "card-grail" : ""}" onclick="openModal('${album.id}')">
       <div class="card-cover">
         ${coverHTML(album)}
         ${r.owned ? `<span class="owned-badge">✔ I samlingen</span>` : ""}
-        ${album.rare ? `<span class="rare-badge" title="Sjælden plade">✨ Sjælden</span>` : ""}
+        ${rarityBadgeHTML(album)}
       </div>
       <div class="card-body">
         <h3>${escapeHTML(album.title)}</h3>
@@ -627,7 +641,7 @@ function openModal(id) {
       <div class="modal-cover">${coverHTML(album)}</div>
       <div class="modal-body">
         <span class="cat-tag" style="--cat:${cat.color}">${cat.emoji} ${cat.label}</span>
-        ${album.rare ? `<span class="rare-badge inline">✨ Sjælden</span>` : ""}
+        ${rarityBadgeHTML(album, true)}
         <h2>${escapeHTML(album.title)}</h2>
         <p class="card-meta">${escapeHTML(album.artist)} · ${album.year} · ${escapeHTML(album.label)}</p>
         <p class="modal-desc">${escapeHTML(album.desc)}</p>

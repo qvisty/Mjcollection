@@ -134,7 +134,10 @@ js/app.js            Routing, visninger, filtre, konfetti
   desc: "En sjov fun fact på dansk." },
 ```
 
-`rare: true` markerer pladen som sjælden (tæller med i Skattejæger-badgen ✨).
+`rare: true` markerer pladen som sjælden (✨, tæller med i Skattejæger-badgen).
+`grail: true` markerer den som hellig gral (💎) — de absolut sværeste plader,
+som får et glimtende guldmærke og gylden ramme. En gral skal også have
+`rare: true`.
 
 `price` angiver vejledende prisniveau: `lav`, `mellem`, `hoej` eller
 `megethoej`. Beløbsintervallerne står samlet i `PRICE_BANDS` i toppen af

@@ -1022,3 +1022,45 @@ main {
   white-space: nowrap;
   cursor: help;
 }
+
+/* Hellig gral — de absolut sjældneste plader */
+.grail-badge {
+  position: absolute;
+  top: .6rem;
+  right: .6rem;
+  background: linear-gradient(110deg, #8a6a12 0%, #f5d878 25%, #fff6d6 40%, #f5d878 55%, #8a6a12 80%);
+  background-size: 300% 100%;
+  animation: grail-shine 4s linear infinite;
+  color: #2a1f04;
+  border: 1px solid #ffe9a8;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  padding: .24rem .6rem;
+  border-radius: 999px;
+  box-shadow: 0 0 14px rgba(245, 216, 120, .55), 0 2px 8px rgba(0, 0, 0, .5);
+  cursor: help;
+}
+
+.grail-badge.inline {
+  position: static;
+  display: inline-block;
+  margin-left: .5rem;
+}
+
+@keyframes grail-shine {
+  to { background-position: -300% 0; }
+}
+
+.card-grail {
+  border-color: rgba(245, 216, 120, .55);
+  box-shadow: 0 0 0 1px rgba(245, 216, 120, .35), 0 8px 26px rgba(245, 216, 120, .14);
+}
+
+.card-grail:hover {
+  box-shadow: 0 0 0 1px rgba(245, 216, 120, .6), 0 12px 34px rgba(245, 216, 120, .22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grail-badge { animation: none; background-position: 30% 0; }
+}
