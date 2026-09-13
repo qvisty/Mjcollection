@@ -5,13 +5,18 @@ Bygget som ren HTML/CSS/JavaScript — intet build-step, kører direkte på GitH
 
 ## Hvad kan den?
 
-- **Overblik** med fremdriftsring, statistik pr. kategori, "næste milepæl", senest
-  tilføjede plader og ønskeliste.
-- **Samlingen**: alle ~50 LP-udgivelser med Michael Jackson (solo, Jackson 5,
-  The Jacksons, soundtracks, opsamlinger og særudgivelser) med søgning, filtre
-  (kategori, årti, status, sjældne plader) og sortering.
-- **Milepæle**: 18 badges der låses op undervejs — med konfetti 🎉
-- På hver plade kan man gemme **stand, fundet-dato, pris, noter og eget foto** (URL).
+- **Overblik** med fremdriftsring, niveau, "dagens jagt", statistik pr. kategori,
+  "næste milepæl", senest tilføjede plader og ønskeliste.
+- **Samlingen**: alle 49 LP-udgivelser med Michael Jackson (solo, Jackson 5,
+  The Jacksons, soundtracks, opsamlinger og særudgivelser) med faner for
+  har/mangler, søgning, filtre (kategori, årti, pladeselskab, ønske-niveau,
+  sjældne) og 13 sorteringsrækkefølger.
+- **Milepæle**: 44 badges i fem grupper der låses op undervejs — med konfetti 🎉
+- **Niveauer**: ni samler-titler fra "Ny i klubben" til "KING OF POP".
+- **Ønskeliste**: 1-3 stjerner pr. plade, alt efter hvor højt man ønsker sig den.
+- **Trackliste** på hver plade, hentet fra iTunes.
+- På hver plade kan man skrive en **bemærkning** og gemme **stand, fundet-dato,
+  pris og eget foto** (alt sammen valgfrit).
 - **Køb-links**: på plader man mangler vises et vejledende prisniveau samt
   søge-links til Discogs, DBA og eBay.
 - **Backup**: eksportér/importér hele samlingen som en JSON-fil (knapper i bunden).
@@ -119,9 +124,10 @@ også fint, da siden er ren statisk HTML (slet i så fald workflow-filen).
 index.html           Selve siden (SPA med hash-routing)
 css/style.css        Design — mørkt "koncertscene"-tema med guld
 js/data.js           Album-databasen + milepæle (nem at udvide!)
-js/storage.js        Storage-lag: localStorage nu, Supabase senere
-js/covers.js         Automatisk cover-hentning fra Wikipedia + fallback
-js/app.js            Routing, visninger, filtre, konfetti
+js/storage.js        Storage-lag: localStorage + Firestore (eller Supabase)
+js/covers.js         Automatisk cover-hentning fra Wikipedia/iTunes + fallback
+js/tracks.js         Tracklister fra iTunes, cachet i browseren
+js/app.js            Routing, visninger, filtre, niveauer, konfetti
 ```
 
 ## Tilføj eller ret et album
