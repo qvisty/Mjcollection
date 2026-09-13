@@ -9,7 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <!-- ?v=BUILD_ID erstattes med commit-id ved udgivelse, så browseren
+       altid henter den nyeste version og ikke en cachet gammel fil -->
+  <link rel="stylesheet" href="css/style.css?v=BUILD_ID">
 </head>
 <body>
 
@@ -42,10 +44,10 @@
     <p class="footer-note">Samlingen gemmes i denne browser. Tag jævnligt en backup!</p>
   </footer>
 
-  <script src="js/data.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/covers.js"></script>
-  <script src="js/tracks.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/data.js?v=BUILD_ID"></script>
+  <script src="js/storage.js?v=BUILD_ID"></script>
+  <script src="js/covers.js?v=BUILD_ID"></script>
+  <script src="js/tracks.js?v=BUILD_ID"></script>
+  <script src="js/app.js?v=BUILD_ID"></script>
 </body>
 </html>
