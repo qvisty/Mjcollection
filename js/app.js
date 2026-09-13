@@ -394,6 +394,40 @@ function gotoCategory(key) {
 
 /* ---------- Visning: Samlingen ---------- */
 
+/* ---------- Sorteringer ----------
+   Ét sted at tilføje en ny rækkefølge: dropdownen bygges
+   automatisk ud fra denne liste. */
+
+const PRICE_RANK = { lav: 0, mellem: 1, hoej: 2, megethoej: 3 };
+const CAT_ORDER = Object.keys(CATEGORIES);
+
+// Fast "tilfældig" rækkefølge pr. blanding, så listen ikke hopper
+// rundt, hver gang siden tegnes igen
+let shuffleSeed = 1;
+function shuffleRank(id) {
+  let h = shuffleSeed;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 100000;
+  return h;
+}
+
+const byTitle = (a, b) => a.title.localeCompare(b.title, "da");
+
+const SORTERS = {
+  "aar-op":     { label: "År (ældste først)", fn: (a, b) => a.year - b.year || byTitle(a, b) },
+  "aar-ned":    { label: "År (nyeste først)", fn: (a, b) => b.year - a.year || byTitle(a, b) },
+  "titel":      { label: "Titel (A-Å)", fn: byTitle },
+  "titel-ned":  { label: "Titel (Å-A)", fn: (a, b) => byTitle(b, a) },
+  "kunstner":   { label: "🎤 Kunstner", fn: (a, b) => a.artist.localeCompare(b.artist, "da") || a.year - b.year },
+  "kategori":   { label: "📚 Kategori", fn: (a, b) => CAT_ORDER.indexOf(a.category) - CAT_ORDER.indexOf(b.category) || a.year - b.year },
+  "senest":     { label: "🆕 Senest tilføjet", fn: (a, b) => (rec(b.id).ownedDate || "").localeCompare(rec(a.id).ownedDate || "") || byTitle(a, b) },
+  "oensker":    { label: "⭐ Flest ønske-stjerner", fn: (a, b) => (rec(b.id).wish || 0) - (rec(a.id).wish || 0) || a.year - b.year },
+  "pris":       { label: "💰 Billigst først", fn: (a, b) => (PRICE_RANK[a.price] ?? 9) - (PRICE_RANK[b.price] ?? 9) || a.year - b.year },
+  "pris-ned":   { label: "💰 Dyrest først", fn: (a, b) => (PRICE_RANK[b.price] ?? -1) - (PRICE_RANK[a.price] ?? -1) || a.year - b.year },
+  "sjaelden":   { label: "✨ Sjældne først", fn: (a, b) => (b.rare ? 1 : 0) - (a.rare ? 1 : 0) || a.year - b.year },
+  "mangler":    { label: "🔎 Mangler først", fn: (a, b) => (rec(a.id).owned ? 1 : 0) - (rec(b.id).owned ? 1 : 0) || a.year - b.year },
+  "tilfaeldig": { label: "🎲 Bland tilfældigt", fn: (a, b) => shuffleRank(a.id) - shuffleRank(b.id) },
+};
+
 function filteredAlbums() {
   let list = [...ALBUMS];
   const q = filters.search.trim().toLowerCase();
@@ -414,18 +448,8 @@ function filteredAlbums() {
     list = list.filter(a => (rec(a.id).wish || 0) >= min && !rec(a.id).owned);
   }
 
-  switch (filters.sort) {
-    case "aar-op": list.sort((a, b) => a.year - b.year || a.title.localeCompare(b.title, "da")); break;
-    case "aar-ned": list.sort((a, b) => b.year - a.year || a.title.localeCompare(b.title, "da")); break;
-    case "titel": list.sort((a, b) => a.title.localeCompare(b.title, "da")); break;
-    case "senest": list.sort((a, b) => (rec(b.id).ownedDate || "").localeCompare(rec(a.id).ownedDate || "")); break;
-    case "oensker": list.sort((a, b) => (rec(b.id).wish || 0) - (rec(a.id).wish || 0) || a.year - b.year); break;
-    case "pris": {
-      const rank = { lav: 0, mellem: 1, hoej: 2, megethoej: 3 };
-      list.sort((a, b) => (rank[a.price] ?? 9) - (rank[b.price] ?? 9) || a.year - b.year);
-      break;
-    }
-  }
+  const sorter = SORTERS[filters.sort] || SORTERS["aar-op"];
+  list.sort(sorter.fn);
   return list;
 }
 
@@ -488,12 +512,8 @@ function renderCollection() {
           <option value="andre"  ${filters.label === "andre" ? "selected" : ""}>Andre</option>
         </select>
         <select onchange="setFilter('sort', this.value)">
-          <option value="aar-op"  ${filters.sort === "aar-op" ? "selected" : ""}>År (ældste først)</option>
-          <option value="aar-ned" ${filters.sort === "aar-ned" ? "selected" : ""}>År (nyeste først)</option>
-          <option value="titel"   ${filters.sort === "titel" ? "selected" : ""}>Titel (A–Å)</option>
-          <option value="senest"  ${filters.sort === "senest" ? "selected" : ""}>Senest tilføjet</option>
-          <option value="oensker" ${filters.sort === "oensker" ? "selected" : ""}>Flest ønske-stjerner</option>
-          <option value="pris"    ${filters.sort === "pris" ? "selected" : ""}>💰 Billigst først</option>
+          ${Object.entries(SORTERS).map(([key, s0]) =>
+            `<option value="${key}" ${filters.sort === key ? "selected" : ""}>${s0.label}</option>`).join("")}
         </select>
         ${filtersActive() ? `<button class="btn-reset" onclick="resetFilters()">✕ Nulstil filtre</button>` : ""}
       </div>
@@ -507,6 +527,8 @@ function renderCollection() {
 }
 
 function setFilter(key, value) {
+  // Ny blanding hver gang man vælger (eller gen-vælger) tilfældig rækkefølge
+  if (key === "sort" && value === "tilfaeldig") shuffleSeed = Date.now() % 100000;
   filters[key] = value;
   const searchEl = $("#search");
   const hadFocus = searchEl && document.activeElement === searchEl;
