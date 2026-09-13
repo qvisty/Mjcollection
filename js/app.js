@@ -4,7 +4,7 @@
 
 let state = null;      // { records, seenAchievements }
 let covers = {};       // albumId -> billed-URL (eller null)
-let filters = { search: "", category: "alle", status: "alle", wish: "alle", decade: "alle", label: "alle", sort: "aar-op" };
+let filters = { search: "", category: "alle", status: "alle", rare: false, wish: "alle", decade: "alle", label: "alle", sort: "aar-op" };
 
 const WISH_LABELS = { 1: "Vil gerne have den", 2: "Ønsker mig den meget", 3: "Drømmeplade! 💭" };
 
@@ -408,7 +408,7 @@ function filteredAlbums() {
   }
   if (filters.status === "ejet") list = list.filter(a => rec(a.id).owned);
   if (filters.status === "mangler") list = list.filter(a => !rec(a.id).owned);
-  if (filters.status === "sjaelden") list = list.filter(a => a.rare);
+  if (filters.rare) list = list.filter(a => a.rare);
   if (filters.wish !== "alle") {
     const min = +filters.wish;
     list = list.filter(a => (rec(a.id).wish || 0) >= min && !rec(a.id).owned);
@@ -426,11 +426,11 @@ function filteredAlbums() {
 
 function filtersActive() {
   return filters.search || filters.category !== "alle" || filters.status !== "alle" ||
-    filters.wish !== "alle" || filters.decade !== "alle" || filters.label !== "alle";
+    filters.rare || filters.wish !== "alle" || filters.decade !== "alle" || filters.label !== "alle";
 }
 
 function resetFilters() {
-  filters = { ...filters, search: "", category: "alle", status: "alle", wish: "alle", decade: "alle", label: "alle" };
+  filters = { ...filters, search: "", category: "alle", status: "alle", rare: false, wish: "alle", decade: "alle", label: "alle" };
   renderCollection();
 }
 
@@ -449,16 +449,22 @@ function renderCollection() {
     </section>
 
     <section class="toolbar">
+      <div class="status-tabs">
+        <button class="stab ${filters.status === "alle" ? "on" : ""}" onclick="setFilter('status','alle')">
+          Alle <span class="stab-count">${s.total}</span></button>
+        <button class="stab ${filters.status === "ejet" ? "on" : ""}" onclick="setFilter('status','ejet')">
+          💿 Har jeg <span class="stab-count">${s.owned}</span></button>
+        <button class="stab ${filters.status === "mangler" ? "on" : ""}" onclick="setFilter('status','mangler')">
+          🔎 Mangler <span class="stab-count">${s.total - s.owned}</span></button>
+      </div>
       <input id="search" type="search" placeholder="Søg titel eller år…" value="${escapeHTML(filters.search)}"
         oninput="setFilter('search', this.value)">
-      <div class="chips">${chips}</div>
+      <div class="chips">
+        ${chips}
+        <button class="chip chip-rare ${filters.rare ? "chip-on" : ""}"
+          onclick="setFilter('rare', ${filters.rare ? "false" : "true"})">✨ Kun sjældne</button>
+      </div>
       <div class="selects">
-        <select onchange="setFilter('status', this.value)">
-          <option value="alle"    ${filters.status === "alle" ? "selected" : ""}>Alle plader</option>
-          <option value="ejet"    ${filters.status === "ejet" ? "selected" : ""}>💿 Har jeg</option>
-          <option value="mangler" ${filters.status === "mangler" ? "selected" : ""}>🔎 Mangler</option>
-          <option value="sjaelden"${filters.status === "sjaelden" ? "selected" : ""}>✨ Sjældne</option>
-        </select>
         <select onchange="setFilter('wish', this.value)">
           <option value="alle" ${filters.wish === "alle" ? "selected" : ""}>Ønskeliste: alle</option>
           <option value="1"    ${filters.wish === "1" ? "selected" : ""}>★ og opefter</option>
