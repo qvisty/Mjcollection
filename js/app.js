@@ -442,11 +442,35 @@ const SORTERS = {
   "tilfaeldig": { label: "🎲 Bland tilfældigt", fn: (a, b) => shuffleRank(a.id) - shuffleRank(b.id) },
 };
 
+/* Gør tekst søgevenlig: små bogstaver, accenter og tegnsætning væk,
+   så "goin back" også finder "Goin' Back to Indiana". */
+function normSearch(str) {
+  return String(str).toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9æøå]+/g, " ")
+    .trim();
+}
+
+function searchMatches(album, q) {
+  const hay = normSearch(`${album.title} ${album.artist} ${album.year} ${album.label}`);
+  // Alle ord skal findes — rækkefølgen er ligegyldig ("wall off" virker også)
+  return normSearch(q).split(" ").every(word => hay.includes(word));
+}
+
+function isSearching() {
+  return filters.search.trim().length > 0;
+}
+
 function filteredAlbums() {
   let list = [...ALBUMS];
-  const q = filters.search.trim().toLowerCase();
-  if (q) list = list.filter(a =>
-    a.title.toLowerCase().includes(q) || a.artist.toLowerCase().includes(q) || String(a.year).includes(q));
+
+  // Under søgning ledes der i HELE samlingen: de øvrige filtre sættes
+  // på pause, så et opslag i pladebutikken altid giver svar
+  if (isSearching()) {
+    const sorter = SORTERS[filters.sort] || SORTERS["aar-op"];
+    return list.filter(a => searchMatches(a, filters.search)).sort(sorter.fn);
+  }
+
   if (filters.category !== "alle") list = list.filter(a => a.category === filters.category);
   if (filters.decade !== "alle") list = list.filter(a => Math.floor(a.year / 10) * 10 === +filters.decade);
   if (filters.label !== "alle") {
@@ -492,7 +516,14 @@ function renderCollection() {
     </section>
 
     <section class="toolbar">
-      <div class="status-tabs">
+      <div class="search-wrap">
+        <span class="search-icon">🔎</span>
+        <input id="search" type="search" autocomplete="off"
+          placeholder="Slå en plade op — skriv titlen…" value="${escapeHTML(filters.search)}"
+          oninput="setFilter('search', this.value)">
+        ${isSearching() ? `<button class="search-clear" onclick="setFilter('search','')" aria-label="Ryd søgning">✕</button>` : ""}
+      </div>
+      <div class="status-tabs ${isSearching() ? "paused" : ""}">
         <button class="stab ${filters.status === "alle" ? "on" : ""}" onclick="setFilter('status','alle')">
           Alle <span class="stab-count">${s.total}</span></button>
         <button class="stab ${filters.status === "ejet" ? "on" : ""}" onclick="setFilter('status','ejet')">
@@ -500,14 +531,12 @@ function renderCollection() {
         <button class="stab ${filters.status === "mangler" ? "on" : ""}" onclick="setFilter('status','mangler')">
           🔎 Mangler <span class="stab-count">${s.total - s.owned}</span></button>
       </div>
-      <input id="search" type="search" placeholder="Søg titel eller år…" value="${escapeHTML(filters.search)}"
-        oninput="setFilter('search', this.value)">
-      <div class="chips">
+      <div class="chips ${isSearching() ? "paused" : ""}">
         ${chips}
         <button class="chip chip-rare ${filters.rare ? "chip-on" : ""}"
           onclick="setFilter('rare', ${filters.rare ? "false" : "true"})">✨ Kun sjældne</button>
       </div>
-      <div class="selects">
+      <div class="selects ${isSearching() ? "paused" : ""}">
         <select onchange="setFilter('wish', this.value)">
           <option value="alle" ${filters.wish === "alle" ? "selected" : ""}>Ønskeliste: alle</option>
           <option value="1"    ${filters.wish === "1" ? "selected" : ""}>★ og opefter</option>
@@ -533,10 +562,17 @@ function renderCollection() {
       </div>
     </section>
 
-    ${filtersActive() ? `<p class="result-count">${list.length} ${list.length === 1 ? "plade" : "plader"} matcher filtrene</p>` : ""}
+    ${isSearching() ? `
+      <p class="search-banner">
+        ${list.length === 0
+          ? `Ingen af de ${s.total} plader hedder noget med "${escapeHTML(filters.search)}" 🤔`
+          : `<strong>${list.length}</strong> ${list.length === 1 ? "plade" : "plader"} matcher "${escapeHTML(filters.search)}" — søgt i hele samlingen`}
+      </p>`
+      : filtersActive() ? `<p class="result-count">${list.length} ${list.length === 1 ? "plade" : "plader"} matcher filtrene</p>` : ""}
 
     <section class="grid">
-      ${list.map(albumCard).join("") || `<p class="empty-hint">Ingen plader matcher din søgning. 🤔</p>`}
+      ${list.map(a => albumCard(a, isSearching())).join("") ||
+        (isSearching() ? "" : `<p class="empty-hint">Ingen plader matcher dine filtre. 🤔</p>`)}
     </section>`;
 }
 
@@ -555,15 +591,22 @@ function setFilter(key, value) {
   }
 }
 
-function albumCard(album) {
+function albumCard(album, searching = false) {
   const r = rec(album.id);
   const cat = CATEGORIES[album.category];
+  // Under søgning: stort, utvetydigt svar — har hun den, eller mangler hun den?
+  const wish = r.wish || 0;
+  const statusBar = !searching ? "" :
+    r.owned
+      ? `<div class="status-bar yes">✓ HAR DEN</div>`
+      : `<div class="status-bar ${wish ? "wish" : "no"}">MANGLER${wish ? ` · ønsker ${"★".repeat(wish)}` : ""}</div>`;
   return `
     <article class="card ${r.owned ? "card-owned" : ""} ${album.grail ? "card-grail" : ""}" onclick="openModal('${album.id}')">
       <div class="card-cover">
         ${coverHTML(album)}
         ${r.owned ? `<span class="owned-badge">✔ I samlingen</span>` : ""}
         ${rarityBadgeHTML(album)}
+        ${statusBar}
       </div>
       <div class="card-body">
         <h3>${escapeHTML(album.title)}</h3>

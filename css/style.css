@@ -1064,3 +1064,70 @@ main {
 @media (prefers-reduced-motion: reduce) {
   .grail-badge { animation: none; background-position: 30% 0; }
 }
+
+/* Hurtigt opslag — søgefeltet er sidens vigtigste knap i en pladebutik */
+.search-wrap { position: relative; display: flex; align-items: center; }
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  font-size: 1.1rem;
+  pointer-events: none;
+  opacity: .8;
+}
+
+.toolbar .search-wrap input[type="search"] {
+  padding: .95rem 3rem .95rem 2.9rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-width: 2px;
+  border-radius: 16px;
+}
+
+.toolbar .search-wrap input[type="search"]::-webkit-search-cancel-button { display: none; }
+
+.search-clear {
+  position: absolute;
+  right: .7rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--panel-edge);
+  color: var(--text-dim);
+  font-size: .9rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.search-clear:hover { color: var(--text); border-color: var(--gold); }
+
+/* Under søgning ledes der i hele samlingen, så de øvrige filtre er
+   uden virkning — de skjules, så resultatet står lige under feltet */
+.paused { display: none; }
+
+.search-banner {
+  color: var(--text-dim);
+  font-size: .92rem;
+  margin: .2rem 0 1rem;
+}
+
+.search-banner strong { color: var(--gold); font-size: 1.05rem; }
+
+/* Stort, utvetydigt svar på hvert kort under søgning */
+.status-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: .5rem .6rem;
+  text-align: center;
+  font-weight: 800;
+  font-size: .92rem;
+  letter-spacing: .04em;
+}
+
+.status-bar.yes { background: rgba(91, 189, 139, .95); color: #06210f; }
+
+.status-bar.no { background: rgba(20, 16, 30, .9); color: #efe6f7; border-top: 1px solid var(--panel-edge); }
+
+.status-bar.wish { background: rgba(232, 185, 60, .95); color: #221a05; }
