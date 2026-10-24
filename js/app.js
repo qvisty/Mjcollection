@@ -19,7 +19,8 @@ function setRec(id, patch) {
 }
 
 function coverURL(album) {
-  return rec(album.id).coverUrl || covers[album.id] || null;
+  // Eget foto først, så det indbyggede cover, til sidst et hentet et
+  return rec(album.id).coverUrl || album.cover || covers[album.id] || null;
 }
 
 function coverHTML(album, cls = "") {

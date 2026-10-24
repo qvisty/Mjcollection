@@ -107,7 +107,8 @@ async function itunesCover(album) {
    Kilde 2: iTunes (for de album, Wikipedia ikke kunne levere). */
 async function resolveCovers(albums, onUpdate) {
   const cache = loadCoverCache();
-  const missing = albums.filter(a => a.wiki && cache[a.id] === undefined);
+  // Udgivelser med indbygget cover-URL skal ikke slås op
+  const missing = albums.filter(a => !a.cover && cache[a.id] === undefined);
   if (missing.length === 0) return cache;
 
   const chunks = [];
@@ -115,10 +116,11 @@ async function resolveCovers(albums, onUpdate) {
 
   for (const chunk of chunks) {
     let found = {}, retryFound = {};
+    const withWiki = chunk.filter(a => a.wiki);
     try {
-      found = await wikiQueryImages(chunk.map(a => a.wiki));
+      if (withWiki.length) found = await wikiQueryImages(withWiki.map(a => a.wiki));
       // Andet forsøg for titler uden billede: prøv "Titel (album)"
-      const retry = chunk.filter(a => !found[a.wiki] && !a.wiki.includes("("));
+      const retry = withWiki.filter(a => !found[a.wiki] && !a.wiki.includes("("));
       if (retry.length) {
         try {
           retryFound = await wikiQueryImages(retry.map(a => `${a.wiki} (album)`));
