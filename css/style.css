@@ -1131,3 +1131,58 @@ main {
 .status-bar.no { background: rgba(20, 16, 30, .9); color: #efe6f7; border-top: 1px solid var(--panel-edge); }
 
 .status-bar.wish { background: rgba(232, 185, 60, .95); color: #221a05; }
+
+/* Formatvælger: album eller singler */
+.format-tabs { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+.ftab {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  color: var(--text-dim);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: .88rem;
+  padding: .45rem .9rem;
+  border-radius: 999px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  transition: color .15s, border-color .15s;
+}
+
+.ftab:hover { color: var(--text); }
+
+.ftab.on { color: var(--text); border-color: var(--gold); }
+
+.ftab-count { color: var(--gold); font-size: .78rem; }
+
+/* 7"-singler: stor midterhul og større etiket end på en LP */
+.cf-single .cf-vinyl { width: 44%; }
+
+.cf-single .cf-label-dot {
+  width: 52%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cf-hole {
+  width: 46%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: hsl(var(--h) 55% 16%);
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, .6);
+}
+
+.fmt-tag {
+  display: inline-block;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  border: 1px solid var(--panel-edge);
+  border-radius: 999px;
+  padding: .18rem .55rem;
+  margin-left: .3rem;
+  white-space: nowrap;
+}

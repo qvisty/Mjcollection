@@ -4,7 +4,7 @@
 
 let state = null;      // { records, seenAchievements }
 let covers = {};       // albumId -> billed-URL (eller null)
-let filters = { search: "", category: "alle", status: "alle", rare: false, wish: "alle", decade: "alle", label: "alle", sort: "aar-op" };
+let filters = { search: "", format: "alle", category: "alle", status: "alle", rare: false, wish: "alle", decade: "alle", label: "alle", sort: "aar-op" };
 
 const WISH_LABELS = { 1: "Vil gerne have den", 2: "Ønsker mig den meget", 3: "Drømmeplade! 💭" };
 
@@ -46,34 +46,66 @@ function rarityBadgeHTML(album, inline = false) {
 /* ---------- Statistik ---------- */
 
 function computeStats() {
+  // Album og singler følges hver for sig: `total`/`owned` dækker
+  // album (som de hidtidige milepæle regner med), mens `all*` er
+  // hele samlingen og driver niveauerne.
   const s = {
-    total: ALBUMS.length, owned: 0, wishlisted: 0, dreamMarked: 0, rareOwned: 0,
-    withNotes: 0, withCondition: 0, withOwnCover: 0, grailOwned: 0,
-    byCategory: {}, categoryTotals: {}, byDecade: {}, decadeTotals: {}, phases: {},
+    total: 0, owned: 0, singlesTotal: 0, singlesOwned: 0, allTotal: ALBUMS.length, allOwned: 0,
+    wishlisted: 0, dreamMarked: 0, rareOwned: 0, grailOwned: 0,
+    withNotes: 0, withCondition: 0, withOwnCover: 0,
+    byCategory: {}, categoryTotals: {}, singlesByCategory: {},
+    byDecade: {}, decadeTotals: {}, phases: {},
+    catStats: { lp: { by: {}, totals: {} }, single: { by: {}, totals: {} }, alle: { by: {}, totals: {} } },
     activeDays: state?.visitDayCount || 0, streak: state?.visitStreak || 0,
   };
+
   for (const a of ALBUMS) {
-    s.categoryTotals[a.category] = (s.categoryTotals[a.category] || 0) + 1;
-    const dec = Math.floor(a.year / 10) * 10;
-    s.decadeTotals[dec] = (s.decadeTotals[dec] || 0) + 1;
     const r = rec(a.id);
+    const isLp = a.format !== "single";
+    const scope = s.catStats[isLp ? "lp" : "single"];
+
+    scope.totals[a.category] = (scope.totals[a.category] || 0) + 1;
+    s.catStats.alle.totals[a.category] = (s.catStats.alle.totals[a.category] || 0) + 1;
+
+    // Ønsker, bemærkninger og detaljer tæller på tværs af formater
     if ((r.wish || 0) > 0 && !r.owned) s.wishlisted++;
     if ((r.wish || 0) === 3) s.dreamMarked++;
     if (r.notes && r.notes.trim()) s.withNotes++;
     if (r.condition) s.withCondition++;
     if (r.coverUrl) s.withOwnCover++;
     if (r.owned) {
-      s.owned++;
-      s.byCategory[a.category] = (s.byCategory[a.category] || 0) + 1;
-      s.byDecade[dec] = (s.byDecade[dec] || 0) + 1;
-      s.phases[mjPhase(a.year)] = (s.phases[mjPhase(a.year)] || 0) + 1;
-      if (a.rare) s.rareOwned++;
-      if (a.grail) s.grailOwned++;
+      s.allOwned++;
+      scope.by[a.category] = (scope.by[a.category] || 0) + 1;
+      s.catStats.alle.by[a.category] = (s.catStats.alle.by[a.category] || 0) + 1;
+    }
+
+    if (isLp) {
+      s.total++;
+      s.categoryTotals[a.category] = (s.categoryTotals[a.category] || 0) + 1;
+      const dec = Math.floor(a.year / 10) * 10;
+      s.decadeTotals[dec] = (s.decadeTotals[dec] || 0) + 1;
+      if (r.owned) {
+        s.owned++;
+        s.byCategory[a.category] = (s.byCategory[a.category] || 0) + 1;
+        s.byDecade[dec] = (s.byDecade[dec] || 0) + 1;
+        s.phases[mjPhase(a.year)] = (s.phases[mjPhase(a.year)] || 0) + 1;
+        if (a.rare) s.rareOwned++;
+        if (a.grail) s.grailOwned++;
+      }
+    } else {
+      s.singlesTotal++;
+      if (r.owned) {
+        s.singlesOwned++;
+        s.singlesByCategory[a.category] = (s.singlesByCategory[a.category] || 0) + 1;
+      }
     }
   }
+
   s.phasesCovered = Object.keys(s.phases).length;
   s.decadesOwned = Object.keys(s.byDecade).length;
   s.percent = s.total ? Math.round((s.owned / s.total) * 100) : 0;
+  s.singlesPercent = s.singlesTotal ? Math.round((s.singlesOwned / s.singlesTotal) * 100) : 0;
+  s.allPercent = s.allTotal ? Math.round((s.allOwned / s.allTotal) * 100) : 0;
   return s;
 }
 
@@ -92,7 +124,8 @@ function achievementProgress(ach, s) {
     return [have, ach.needsAlbums.length];
   }
   if (ach.needsCategory) {
-    return [s.byCategory[ach.needsCategory] || 0, s.categoryTotals[ach.needsCategory] || 0];
+    const scope = s.catStats[ach.format || "lp"];
+    return [scope.by[ach.needsCategory] || 0, scope.totals[ach.needsCategory] || 0];
   }
   if (ach.progress) return ach.progress(s);
   return [0, 1];
@@ -169,7 +202,7 @@ async function toggleOwned(id) {
     toast(`<span class="toast-emoji">💿</span><div><strong>${escapeHTML(a.title)}</strong> er nu i samlingen!</div>`);
     confetti();
     // Level up?
-    const li = levelInfo(computeStats().owned);
+    const li = levelInfo(computeStats().allOwned);
     if (li.idx > (state.seenLevel || 0)) {
       state.seenLevel = li.idx;
       setTimeout(() => {
@@ -237,19 +270,20 @@ function render() {
 
 function renderHeaderCount() {
   const s = computeStats();
-  $("#header-count").textContent = `${s.owned}/${s.total}`;
-  $("#header-count").title = `${s.owned} af ${s.total} plader samlet`;
+  $("#header-count").textContent = `${s.allOwned}/${s.allTotal}`;
+  $("#header-count").title =
+    `${s.owned} af ${s.total} album og ${s.singlesOwned} af ${s.singlesTotal} singler samlet`;
 }
 
 /* ---------- Visning: Overblik ---------- */
 
-function motivationMessage(s) {
-  if (s.owned === 0) return "Jagten begynder nu — find din første plade! 🔎";
-  if (s.percent < 10) return "Sikke en start! Hver plade tæller. 💪";
-  if (s.percent < 25) return "Samlingen vokser — godt gået! 🌱";
-  if (s.percent < 50) return "Wow, du er godt på vej mod halvvejs! 🚀";
-  if (s.percent < 75) return "Over halvvejs — du er en ægte samler! ⭐";
-  if (s.percent < 100) return "Så tæt på! De sidste er de sjoveste at jagte. 🏁";
+function motivationMessage(percent, owned) {
+  if (owned === 0) return "Jagten begynder nu — find din første plade! 🔎";
+  if (percent < 10) return "Sikke en start! Hver plade tæller. 💪";
+  if (percent < 25) return "Samlingen vokser — godt gået! 🌱";
+  if (percent < 50) return "Wow, du er godt på vej mod halvvejs! 🚀";
+  if (percent < 75) return "Over halvvejs — du er en ægte samler! ⭐";
+  if (percent < 100) return "Så tæt på! De sidste er de sjoveste at jagte. 🏁";
   return "KOMPLET SAMLING! Du er den ultimative MJ-fan! 👑🎉";
 }
 
@@ -270,7 +304,7 @@ function progressRing(percent, size = 180) {
 function renderDashboard() {
   const s = computeStats();
   const earned = earnedSet(s);
-  const lv = levelInfo(s.owned);
+  const lv = levelInfo(s.allOwned);
 
   // Dagens jagt: én manglende plade, som skifter hver dag
   const hunt = (() => {
@@ -296,7 +330,7 @@ function renderDashboard() {
     .slice(0, 4);
 
   const catBars = Object.entries(CATEGORIES).map(([key, cat]) => {
-    const have = s.byCategory[key] || 0, total = s.categoryTotals[key] || 0;
+    const have = s.catStats.alle.by[key] || 0, total = s.catStats.alle.totals[key] || 0;
     const pct = total ? Math.round((have / total) * 100) : 0;
     return `
       <div class="catbar" role="button" tabindex="0" onclick="gotoCategory('${key}')" onkeydown="if(event.key==='Enter')gotoCategory('${key}')">
@@ -311,7 +345,7 @@ function renderDashboard() {
   $("#view").innerHTML = `
     <section class="hero">
       <div class="hero-text">
-        <h1>Min Michael Jackson<br><span class="gold">LP-samling</span></h1>
+        <h1>Min Michael Jackson<br><span class="gold">pladesamling</span></h1>
         <div class="level-chip">
           <span class="level-emoji">${lv.cur.emoji}</span>
           <span><strong>Niveau ${lv.idx}: ${escapeHTML(lv.cur.title)}</strong><br>
@@ -319,18 +353,18 @@ function renderDashboard() {
             ? `${lv.toNext} ${lv.toNext === 1 ? "plade" : "plader"} til ${lv.next.emoji} ${escapeHTML(lv.next.title)}`
             : "Højeste niveau — kongen selv! 👑"}</small></span>
         </div>
-        <p class="motivation">${motivationMessage(s)}</p>
+        <p class="motivation">${motivationMessage(s.allPercent, s.allOwned)}</p>
         <div class="hero-stats">
-          <div class="stat"><strong>${s.owned}</strong><span>i samlingen</span></div>
-          <div class="stat"><strong>${s.total - s.owned}</strong><span>mangler endnu</span></div>
-          <div class="stat"><strong>${earned.size}</strong><span>milepæle 🏆</span></div>
+          <div class="stat"><strong>${s.owned}</strong> <span>af ${s.total} album 💿</span></div>
+          <div class="stat"><strong>${s.singlesOwned}</strong> <span>af ${s.singlesTotal} singler 🎵</span></div>
+          <div class="stat"><strong>${earned.size}</strong> <span>milepæle 🏆</span></div>
         </div>
         <div class="hero-cta">
           <a class="btn btn-gold" href="#/samling">Se hele samlingen</a>
           <a class="btn" href="#/milepaele">Mine milepæle</a>
         </div>
       </div>
-      <div class="hero-ring">${progressRing(s.percent)}</div>
+      <div class="hero-ring">${progressRing(s.allPercent)}</div>
     </section>
 
     ${next ? `
@@ -360,6 +394,20 @@ function renderDashboard() {
         </div>
       </div>
     </section>` : ""}
+
+    <section class="panel">
+      <h2>💿 Album og singler</h2>
+      <div class="catbars">
+        <div class="catbar" role="button" tabindex="0" onclick="gotoFormat('lp')" onkeydown="if(event.key==='Enter')gotoFormat('lp')">
+          <div class="catbar-head"><span>💿 Album (LP)</span><span class="catbar-count">${s.owned}/${s.total}</span></div>
+          <div class="bar"><div class="bar-fill gold-fill" style="width:${s.percent}%"></div></div>
+        </div>
+        <div class="catbar" role="button" tabindex="0" onclick="gotoFormat('single')" onkeydown="if(event.key==='Enter')gotoFormat('single')">
+          <div class="catbar-head"><span>🎵 Singler (7")</span><span class="catbar-count">${s.singlesOwned}/${s.singlesTotal}</span></div>
+          <div class="bar"><div class="bar-fill" style="width:${s.singlesPercent}%; background:#4fd1b5"></div></div>
+        </div>
+      </div>
+    </section>
 
     <section class="panel">
       <h2>📚 Samlingen del for del</h2>
@@ -399,8 +447,16 @@ function miniCard(album, showWish = false) {
     </div>`;
 }
 
+function gotoFormat(key) {
+  filters.format = key;
+  filters.category = "alle";
+  location.hash = "#/samling";
+  if (currentRoute() === "samling") render();
+}
+
 function gotoCategory(key) {
   filters.category = key;
+  filters.format = "alle";
   location.hash = "#/samling";
   if (currentRoute() === "samling") render();
 }
@@ -471,6 +527,7 @@ function filteredAlbums() {
     return list.filter(a => searchMatches(a, filters.search)).sort(sorter.fn);
   }
 
+  if (filters.format !== "alle") list = list.filter(a => (a.format || "lp") === filters.format);
   if (filters.category !== "alle") list = list.filter(a => a.category === filters.category);
   if (filters.decade !== "alle") list = list.filter(a => Math.floor(a.year / 10) * 10 === +filters.decade);
   if (filters.label !== "alle") {
@@ -492,12 +549,12 @@ function filteredAlbums() {
 }
 
 function filtersActive() {
-  return filters.search || filters.category !== "alle" || filters.status !== "alle" ||
+  return filters.search || filters.format !== "alle" || filters.category !== "alle" || filters.status !== "alle" ||
     filters.rare || filters.wish !== "alle" || filters.decade !== "alle" || filters.label !== "alle";
 }
 
 function resetFilters() {
-  filters = { ...filters, search: "", category: "alle", status: "alle", rare: false, wish: "alle", decade: "alle", label: "alle" };
+  filters = { ...filters, search: "", format: "alle", category: "alle", status: "alle", rare: false, wish: "alle", decade: "alle", label: "alle" };
   renderCollection();
 }
 
@@ -505,14 +562,20 @@ function renderCollection() {
   const s = computeStats();
   const list = filteredAlbums();
 
+  // Tællere og overskrift følger det valgte format
+  const scopeOwned = filters.format === "lp" ? s.owned : filters.format === "single" ? s.singlesOwned : s.allOwned;
+  const scopeTotal = filters.format === "lp" ? s.total : filters.format === "single" ? s.singlesTotal : s.allTotal;
+  const scopeTitle = filters.format === "lp" ? "Album" : filters.format === "single" ? "Singler" : "Samlingen";
+
   const chips = [["alle", "Alle"], ...Object.entries(CATEGORIES).map(([k, c]) => [k, `${c.emoji} ${c.label}`])]
     .map(([k, label]) => `<button class="chip ${filters.category === k ? "chip-on" : ""}"
       onclick="setFilter('category','${k}')">${label}</button>`).join("");
 
   $("#view").innerHTML = `
     <section class="collection-head">
-      <h1>Samlingen <span class="count-pill">${s.owned}/${s.total}</span></h1>
-      <div class="bar bar-wide"><div class="bar-fill gold-fill" style="width:${s.percent}%"></div></div>
+      <h1>${scopeTitle} <span class="count-pill">${scopeOwned}/${scopeTotal}</span></h1>
+      <div class="bar bar-wide"><div class="bar-fill gold-fill"
+        style="width:${scopeTotal ? Math.round((scopeOwned / scopeTotal) * 100) : 0}%"></div></div>
     </section>
 
     <section class="toolbar">
@@ -525,11 +588,19 @@ function renderCollection() {
       </div>
       <div class="status-tabs ${isSearching() ? "paused" : ""}">
         <button class="stab ${filters.status === "alle" ? "on" : ""}" onclick="setFilter('status','alle')">
-          Alle <span class="stab-count">${s.total}</span></button>
+          Alle <span class="stab-count">${scopeTotal}</span></button>
         <button class="stab ${filters.status === "ejet" ? "on" : ""}" onclick="setFilter('status','ejet')">
-          💿 Har jeg <span class="stab-count">${s.owned}</span></button>
+          💿 Har jeg <span class="stab-count">${scopeOwned}</span></button>
         <button class="stab ${filters.status === "mangler" ? "on" : ""}" onclick="setFilter('status','mangler')">
-          🔎 Mangler <span class="stab-count">${s.total - s.owned}</span></button>
+          🔎 Mangler <span class="stab-count">${scopeTotal - scopeOwned}</span></button>
+      </div>
+      <div class="format-tabs ${isSearching() ? "paused" : ""}">
+        <button class="ftab ${filters.format === "alle" ? "on" : ""}" onclick="setFilter('format','alle')">
+          Alt <span class="ftab-count">${s.allTotal}</span></button>
+        <button class="ftab ${filters.format === "lp" ? "on" : ""}" onclick="setFilter('format','lp')">
+          💿 Album <span class="ftab-count">${s.owned}/${s.total}</span></button>
+        <button class="ftab ${filters.format === "single" ? "on" : ""}" onclick="setFilter('format','single')">
+          🎵 Singler <span class="ftab-count">${s.singlesOwned}/${s.singlesTotal}</span></button>
       </div>
       <div class="chips ${isSearching() ? "paused" : ""}">
         ${chips}
@@ -612,6 +683,7 @@ function albumCard(album, searching = false) {
         <h3>${escapeHTML(album.title)}</h3>
         <p class="card-meta">${escapeHTML(album.artist)} · ${album.year}</p>
         <span class="cat-tag" style="--cat:${cat.color}">${cat.emoji} ${cat.label}</span>
+        ${album.format === "single" ? `<span class="fmt-tag">🎵 Single</span>` : ""}
         ${r.owned || !PRICE_BANDS[album.price] ? "" :
           `<span class="price-tag" title="${escapeHTML(PRICE_BANDS[album.price].hint)}">💰 ${escapeHTML(PRICE_BANDS[album.price].label)}</span>`}
         ${r.notes && r.notes.trim() ? `<span class="note-dot" title="${escapeHTML(r.notes.trim())}">💬</span>` : ""}
@@ -684,6 +756,7 @@ function openModal(id) {
       <div class="modal-cover">${coverHTML(album)}</div>
       <div class="modal-body">
         <span class="cat-tag" style="--cat:${cat.color}">${cat.emoji} ${cat.label}</span>
+        ${album.format === "single" ? `<span class="fmt-tag">🎵 Single (7")</span>` : `<span class="fmt-tag">💿 Album (LP)</span>`}
         ${rarityBadgeHTML(album, true)}
         <h2>${escapeHTML(album.title)}</h2>
         <p class="card-meta">${escapeHTML(album.artist)} · ${album.year} · ${escapeHTML(album.label)}</p>
@@ -870,7 +943,7 @@ async function init() {
     persist();
   }
   // Sørg for at nuværende niveau ikke fejres som "level up" ved næste køb
-  state.seenLevel = Math.max(state.seenLevel || 0, levelInfo(computeStats().owned).idx);
+  state.seenLevel = Math.max(state.seenLevel || 0, levelInfo(computeStats().allOwned).idx);
 
   // Marker allerede optjente milepæle som set, så gamle badges
   // ikke fejres igen ved hver genindlæsning

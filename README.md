@@ -7,12 +7,13 @@ Bygget som ren HTML/CSS/JavaScript — intet build-step, kører direkte på GitH
 
 - **Overblik** med fremdriftsring, niveau, "dagens jagt", statistik pr. kategori,
   "næste milepæl", senest tilføjede plader og ønskeliste.
-- **Samlingen**: alle 49 LP-udgivelser med Michael Jackson (solo, Jackson 5,
-  The Jacksons, soundtracks, opsamlinger og særudgivelser) med faner for
-  har/mangler, søgning, filtre (kategori, årti, pladeselskab, ønske-niveau,
-  sjældne) og 13 sorteringsrækkefølger.
-- **Milepæle**: 44 badges i fem grupper der låses op undervejs — med konfetti 🎉
-- **Niveauer**: ni samler-titler fra "Ny i klubben" til "KING OF POP".
+- **Samlingen**: 137 udgivelser — 49 LP'er og 88 officielle singler (solo,
+  Jackson 5, The Jacksons, soundtracks, opsamlinger, særudgivelser og duetter)
+  med formatvælger, faner for har/mangler, søgning, filtre (kategori, årti,
+  pladeselskab, ønske-niveau, sjældne) og 13 sorteringsrækkefølger.
+- **Milepæle**: 53 badges i seks grupper der låses op undervejs — med konfetti 🎉
+- **Niveauer**: ti samler-titler fra "Ny i klubben" til "KING OF POP", baseret
+  på hele samlingen (album + singler).
 - **Ønskeliste**: 1-3 stjerner pr. plade, alt efter hvor højt man ønsker sig den.
 - **Trackliste** på hver plade, hentet fra iTunes.
 - På hver plade kan man skrive en **bemærkning** og gemme **stand, fundet-dato,
@@ -145,6 +146,9 @@ js/app.js            Routing, visninger, filtre, niveauer, konfetti
 som får et glimtende guldmærke og gylden ramme. En gral skal også have
 `rare: true`.
 
-`price` angiver vejledende prisniveau: `lav`, `mellem`, `hoej` eller
+`format: "single"` gør udgivelsen til en 7"-single i stedet for en LP;
+singlerne står i den kompakte `SINGLES_RAW`-liste nederst i filen.
+
+`price` angiver vejledende prisniveau: `billig`, `lav`, `mellem`, `hoej` eller
 `megethoej`. Beløbsintervallerne står samlet i `PRICE_BANDS` i toppen af
 `js/data.js` og kan justeres ét sted, hvis markedet ændrer sig.

@@ -6,12 +6,20 @@
    ============================================================ */
 
 const CATEGORIES = {
-  studie:     { label: "Solo-studiealbum", emoji: "🎤", color: "#e8b93c" },
+  studie:     { label: "Michael solo",     emoji: "🎤", color: "#e8b93c" },
   jackson5:   { label: "Jackson 5",        emoji: "✋", color: "#e0653a" },
   jacksons:   { label: "The Jacksons",     emoji: "👨‍👦‍👦", color: "#4fa3d1" },
   soundtrack: { label: "Soundtracks",      emoji: "🎬", color: "#8f6fd1" },
   opsamling:  { label: "Opsamlinger",      emoji: "💿", color: "#5bbd8b" },
   special:    { label: "Særudgivelser",    emoji: "✨", color: "#d15b9e" },
+  duet:       { label: "Duetter",          emoji: "🤝", color: "#4fd1b5" },
+};
+
+/* Formater — LP'er og singler følges hver for sig, så begge dele
+   har deres egen fremdrift at samle på */
+const FORMATS = {
+  lp:     { label: "Album", emoji: "💿", plural: "album" },
+  single: { label: "Singler", emoji: "🎵", plural: "singler" },
 };
 
 /* Vejledende prisniveau for et brugt eksemplar i pæn stand.
@@ -19,6 +27,7 @@ const CATEGORIES = {
    pladen er at opdrive — den rigtige dagspris står på Discogs,
    som der linkes til inde på hver plade. */
 const PRICE_BANDS = {
+  billig:    { label: "ca. 20-60 kr.",   hint: "Lommepenge-venlig" },
   lav:       { label: "ca. 60-150 kr.",  hint: "Nem at finde brugt" },
   mellem:    { label: "ca. 150-350 kr.", hint: "Dukker jævnligt op" },
   hoej:      { label: "ca. 350-800 kr.", hint: "Svær at finde" },
@@ -196,15 +205,16 @@ const ALBUMS = [
    ============================================================ */
 
 const LEVELS = [
-  { min: 0,  emoji: "🎧", title: "Ny i klubben" },
-  { min: 1,  emoji: "🌱", title: "Pladespirer" },
-  { min: 5,  emoji: "💿", title: "Vinyl-ven" },
-  { min: 10, emoji: "🎶", title: "Rigtig samler" },
-  { min: 15, emoji: "🕺", title: "Moonwalker i træning" },
-  { min: 20, emoji: "🧟", title: "Thriller-jæger" },
-  { min: 30, emoji: "🎩", title: "Vinyl-mester" },
-  { min: 40, emoji: "🌟", title: "Levende legende" },
-  { min: 49, emoji: "👑", title: "KING OF POP" },
+  { min: 0,   emoji: "🎧", title: "Ny i klubben" },
+  { min: 1,   emoji: "🌱", title: "Pladespirer" },
+  { min: 5,   emoji: "💿", title: "Vinyl-ven" },
+  { min: 12,  emoji: "🎶", title: "Rigtig samler" },
+  { min: 25,  emoji: "🕺", title: "Moonwalker i træning" },
+  { min: 40,  emoji: "🧟", title: "Thriller-jæger" },
+  { min: 60,  emoji: "🎩", title: "Vinyl-mester" },
+  { min: 85,  emoji: "🌟", title: "Levende legende" },
+  { min: 110, emoji: "🏛️", title: "Hall of Fame" },
+  { min: 137, emoji: "👑", title: "KING OF POP" },
 ];
 
 /* Michaels livsfase, da pladen udkom (født 29. august 1958) */
@@ -236,6 +246,7 @@ const ACHIEVEMENT_GROUPS = {
   rejse: "🎂 Michaels rejse",
   trofae: "🏆 Store trofæer",
   tema: "🎨 Temajagt",
+  singler: "🎵 Singlejagten",
   flid: "✍️ Flid og kærlighed",
 };
 
@@ -245,19 +256,19 @@ const ACHIEVEMENTS = [
     desc: "Føj din allerførste LP til samlingen.",
     progress: s => [Math.min(s.owned, 1), 1] },
   { id: "five", group: "samling", emoji: "🌟", title: "Godt i gang",
-    desc: "Saml 5 plader.",
+    desc: "Saml 5 album.",
     progress: s => [Math.min(s.owned, 5), 5] },
   { id: "ten", group: "samling", emoji: "💿", title: "Rigtig samler",
-    desc: "Saml 10 plader.",
+    desc: "Saml 10 album.",
     progress: s => [Math.min(s.owned, 10), 10] },
   { id: "twentyfive", group: "samling", emoji: "🕺", title: "Superfan",
-    desc: "Saml 25 plader.",
+    desc: "Saml 25 album.",
     progress: s => [Math.min(s.owned, 25), 25] },
   { id: "half", group: "samling", emoji: "🚀", title: "Halvvejs!",
-    desc: "Ej halvdelen af alle plader på listen.",
+    desc: "Ej halvdelen af alle album på listen.",
     progress: s => [s.owned, Math.ceil(s.total / 2)] },
-  { id: "complete", group: "samling", emoji: "🏆", title: "Komplet samling!",
-    desc: "Ej ALLE plader på listen. Vildt!",
+  { id: "complete", group: "samling", emoji: "🏆", title: "Alle album i hus!",
+    desc: "Ej samtlige 49 LP'er på listen. Vildt!",
     progress: s => [s.owned, s.total] },
 
   /* --- 🎂 Michaels rejse (hans alder på pladerne) --- */
@@ -341,6 +352,37 @@ const ACHIEVEMENTS = [
     desc: "Ej alle plader fra 1990'erne.",
     progress: s => [s.byDecade[1990] || 0, s.decadeTotals[1990] || 0] },
 
+  /* --- 🎵 Singlejagten (billige fund, hurtige sejre) --- */
+  { id: "s-first", group: "singler", emoji: "🎵", title: "Første single",
+    desc: "Find din allerførste 7\"-single. De koster ofte under 50 kr.!",
+    progress: s => [Math.min(s.singlesOwned, 1), 1] },
+  { id: "s-ten", group: "singler", emoji: "📀", title: "Singlebunken",
+    desc: "Saml 10 singler.",
+    progress: s => [Math.min(s.singlesOwned, 10), 10] },
+  { id: "s-thirty", group: "singler", emoji: "🎚️", title: "Jukeboksen",
+    desc: "Saml 30 singler — nok til en hel aften med musik.",
+    progress: s => [Math.min(s.singlesOwned, 30), 30] },
+  { id: "s-all", group: "singler", emoji: "🥇", title: "Alle singler i hus!",
+    desc: "Ej samtlige singler på listen. Det er en bedrift!",
+    progress: s => [s.singlesOwned, s.singlesTotal] },
+  { id: "s-thriller", group: "singler", emoji: "🧟", title: "Thriller-syvtommerne",
+    desc: "Ej alle syv singler fra Thriller-albummet.",
+    needsAlbums: ["s-the-girl-is-mine", "s-billie-jean", "s-beat-it",
+                  "s-wanna-be-startin-somethin", "s-human-nature",
+                  "s-p-y-t-pretty-young-thing", "s-thriller"] },
+  { id: "s-number1", group: "singler", emoji: "1️⃣", title: "Nummer 1-samlingen",
+    desc: "Ej fire af de største hits som singler: Billie Jean, Beat It, Bad og Black or White.",
+    needsAlbums: ["s-billie-jean", "s-beat-it", "s-bad", "s-black-or-white"] },
+  { id: "s-duet", group: "singler", emoji: "🤝", title: "Duet-makkeren",
+    desc: "Ej alle duet- og samarbejdssinglerne — bl.a. med Paul McCartney og Diana Ross.",
+    needsCategory: "duet", format: "single" },
+  { id: "s-j5", group: "singler", emoji: "✋", title: "Motown-syvtommere",
+    desc: "Saml 10 Jackson 5-singler.",
+    progress: s => [Math.min(s.singlesByCategory.jackson5 || 0, 10), 10] },
+  { id: "s-both", group: "singler", emoji: "🔗", title: "Album og single",
+    desc: "Ej både LP'en Thriller og singlen Billie Jean.",
+    needsAlbums: ["thriller", "s-billie-jean"] },
+
   /* --- ✍️ Flid og kærlighed (brug siden!) --- */
   { id: "wishmaker", group: "flid", emoji: "⭐", title: "Ønskejagten",
     desc: "Giv 3 plader ønske-stjerner, så du ved, hvad du jagter.",
@@ -382,3 +424,158 @@ const ACHIEVEMENTS = [
     desc: "Besøg siden 7 dage i træk — Michael ville være stolt.",
     progress: s => [Math.min(s.streak, 7), 7] },
 ];
+
+/* ============================================================
+   Officielle singler (7")
+   ------------------------------------------------------------
+   Kompakt format, så listen er til at overskue:
+     [titel, år, kategori, prisniveau, fun fact?, kunstner?, selskab?]
+   Listen dækker de officielle singleudgivelser — ikke enhver
+   lokal presning eller promo-udgave; dem er der hundredvis af.
+   ============================================================ */
+
+const SINGLES_RAW = [
+  /* --- Jackson 5 (Motown) --- */
+  ["I Want You Back", 1969, "jackson5", "lav", "Den allerførste single — regnes for en af popmusikkens bedste åbninger nogensinde."],
+  ["ABC", 1970, "jackson5", "lav", "Skubbede The Beatles' \"Let It Be\" ned fra førstepladsen."],
+  ["The Love You Save", 1970, "jackson5", "lav"],
+  ["I'll Be There", 1970, "jackson5", "lav", "Deres fjerde nummer 1-hit i træk — det havde ingen gruppe gjort før."],
+  ["Santa Claus Is Comin' to Town", 1970, "jackson5", "mellem", "Julesinglen! Perfekt at finde frem i december."],
+  ["Mama's Pearl", 1971, "jackson5", "lav"],
+  ["Never Can Say Goodbye", 1971, "jackson5", "lav"],
+  ["Maybe Tomorrow", 1971, "jackson5", "lav"],
+  ["Sugar Daddy", 1971, "jackson5", "lav"],
+  ["Little Bitty Pretty One", 1972, "jackson5", "lav"],
+  ["Lookin' Through the Windows", 1972, "jackson5", "lav"],
+  ["Corner of the Sky", 1972, "jackson5", "lav", "Fra Broadway-musicalen Pippin."],
+  ["Hallelujah Day", 1973, "jackson5", "lav"],
+  ["Get It Together", 1973, "jackson5", "lav"],
+  ["Dancing Machine", 1974, "jackson5", "lav", "Michael dansede robot til denne i tv — og hele USA kopierede ham."],
+  ["Whatever You Got, I Want", 1974, "jackson5", "mellem"],
+  ["I Am Love", 1975, "jackson5", "mellem"],
+  ["Forever Came Today", 1975, "jackson5", "mellem", "Den sidste single som Jackson 5 på Motown."],
+
+  /* --- Michael solo (Motown) --- */
+  ["Got to Be There", 1971, "studie", "lav", "Michaels allerførste solosingle — han var 13 år."],
+  ["Rockin' Robin", 1972, "studie", "lav", "En gammel 50'er-sang, som Michael gjorde til sin egen."],
+  ["I Wanna Be Where You Are", 1972, "studie", "lav"],
+  ["Ben", 1972, "studie", "lav", "Michaels første nummer 1-hit som solist — en kærlighedssang til en rotte!"],
+  ["With a Child's Heart", 1973, "studie", "mellem"],
+  ["We're Almost There", 1975, "studie", "mellem"],
+  ["Just a Little Bit of You", 1975, "studie", "mellem"],
+  ["One Day in Your Life", 1981, "studie", "lav", "Motown genudgav den midt i Michaels Epic-succes — og den gik nummer 1 i England.", null, "Motown"],
+  ["Farewell My Summer Love", 1984, "studie", "lav", "Fundet i Motowns arkiv 11 år efter, den blev indspillet.", null, "Motown"],
+
+  /* --- Michael solo (Epic) — Off the Wall --- */
+  ["Don't Stop 'Til You Get Enough", 1979, "studie", "billig", "Michael skrev den selv — og vandt sin første Grammy for den."],
+  ["Rock with You", 1979, "studie", "billig"],
+  ["Off the Wall", 1980, "studie", "billig"],
+  ["She's Out of My Life", 1980, "studie", "billig", "Michael græd, hver gang han sang den i studiet — man kan høre det til sidst."],
+  ["Girlfriend", 1980, "studie", "lav", "Skrevet af Paul McCartney, længe før de sang duet sammen."],
+
+  /* --- Thriller --- */
+  ["The Girl Is Mine", 1982, "studie", "billig", "Duet med Paul McCartney — den første single fra Thriller."],
+  ["Billie Jean", 1983, "studie", "billig", "Sangen han lavede moonwalk til på tv i 1983. Verden stoppede op."],
+  ["Beat It", 1983, "studie", "billig", "Med Eddie Van Halens vilde guitarsolo — indspillet gratis som en vennetjeneste."],
+  ["Wanna Be Startin' Somethin'", 1983, "studie", "billig"],
+  ["Human Nature", 1983, "studie", "billig"],
+  ["P.Y.T. (Pretty Young Thing)", 1983, "studie", "billig"],
+  ["Thriller", 1984, "studie", "lav", "Musikvideoen var 14 minutter lang og ændrede musikvideoer for altid."],
+
+  /* --- Bad --- */
+  ["I Just Can't Stop Loving You", 1987, "studie", "billig", "Duet med Siedah Garrett."],
+  ["Bad", 1987, "studie", "billig"],
+  ["The Way You Make Me Feel", 1987, "studie", "billig"],
+  ["Man in the Mirror", 1988, "studie", "billig", "Michaels yndlingssang at optræde med."],
+  ["Dirty Diana", 1988, "studie", "billig"],
+  ["Another Part of Me", 1988, "studie", "billig"],
+  ["Smooth Criminal", 1988, "studie", "billig", "Videoen med det umulige skrå læn — de brugte skjulte kroge i gulvet."],
+  ["Leave Me Alone", 1989, "studie", "lav"],
+  ["Liberian Girl", 1989, "studie", "lav"],
+
+  /* --- Dangerous --- */
+  ["Black or White", 1991, "studie", "billig", "Videoen havde ansigter, der forvandlede sig til hinanden — helt nyt dengang."],
+  ["Remember the Time", 1992, "studie", "billig"],
+  ["In the Closet", 1992, "studie", "billig"],
+  ["Jam", 1992, "studie", "billig", "Videoen er med basketball-legenden Michael Jordan."],
+  ["Who Is It", 1992, "studie", "billig"],
+  ["Heal the World", 1992, "studie", "billig", "Michael sagde selv, det var den sang, han var mest stolt af."],
+  ["Give In to Me", 1993, "studie", "lav"],
+  ["Will You Be There", 1993, "studie", "lav", "Kendt fra filmen Free Willy."],
+  ["Gone Too Soon", 1993, "studie", "lav"],
+
+  /* --- HIStory og frem --- */
+  ["Scream", 1995, "studie", "lav", "Duet med lillesøsteren Janet — og dengang verdens dyreste musikvideo."],
+  ["You Are Not Alone", 1995, "studie", "lav", "Den allerførste sang, der gik direkte ind som nummer 1 i USA."],
+  ["Earth Song", 1995, "studie", "lav", "Michaels største hit i England nogensinde."],
+  ["They Don't Care About Us", 1996, "studie", "lav"],
+  ["Stranger in Moscow", 1996, "studie", "lav"],
+  ["Blood on the Dance Floor", 1997, "studie", "lav"],
+  ["HIStory / Ghosts", 1997, "studie", "mellem"],
+  ["You Rock My World", 2001, "studie", "mellem", "Vinylsingler var næsten uddøde i 2001 — derfor er den svær at finde."],
+  ["Cry", 2001, "studie", "mellem"],
+  ["Butterflies", 2001, "studie", "hoej"],
+  ["One More Chance", 2003, "studie", "mellem"],
+  ["Hold My Hand", 2010, "studie", "mellem", "Duet med Akon — udgivet efter Michaels død."],
+  ["Love Never Felt So Good", 2014, "studie", "mellem", "Med Justin Timberlake. Sangen lå gemt i 31 år, før den blev et hit."],
+
+  /* --- The Jacksons (Epic) --- */
+  ["Enjoy Yourself", 1976, "jacksons", "billig", "Den første single under det nye navn The Jacksons."],
+  ["Show You the Way to Go", 1977, "jacksons", "billig", "Gruppens eneste nummer 1-hit i England."],
+  ["Goin' Places", 1977, "jacksons", "lav"],
+  ["Blame It on the Boogie", 1978, "jacksons", "billig"],
+  ["Shake Your Body (Down to the Ground)", 1979, "jacksons", "billig", "Skrevet af Michael og lillebror Randy."],
+  ["Lovely One", 1980, "jacksons", "billig"],
+  ["Heartbreak Hotel", 1980, "jacksons", "lav", "Omdøbt til \"This Place Hotel\", så folk ikke forvekslede den med Elvis'."],
+  ["Can You Feel It", 1981, "jacksons", "billig", "Videoen med kæmpe-brødrene, der drysser lys ud over verden."],
+  ["Walk Right Now", 1981, "jacksons", "lav"],
+  ["State of Shock", 1984, "jacksons", "billig", "Michael synger duet med Mick Jagger fra The Rolling Stones."],
+  ["Torture", 1984, "jacksons", "lav"],
+  ["Body", 1984, "jacksons", "lav"],
+  ["2300 Jackson Street", 1989, "jacksons", "lav"],
+  ["Nothin (That Compares 2 U)", 1989, "jacksons", "lav"],
+
+  /* --- Duetter og samarbejder --- */
+  ["Ease on Down the Road", 1978, "duet", "lav", "Med Diana Ross fra filmen The Wiz.", "Diana Ross & Michael Jackson", "MCA"],
+  ["Say Say Say", 1983, "duet", "billig", "Med Paul McCartney — nummer 1 i USA i seks uger.", "Paul McCartney & Michael Jackson", "Parlophone"],
+  ["Somebody's Watching Me", 1984, "duet", "lav", "Michael synger det uhyggelige omkvæd.", "Rockwell", "Motown"],
+  ["We Are the World", 1985, "duet", "billig", "45 superstjerner i ét studie. Michael skrev den sammen med Lionel Richie.", "USA for Africa", "Columbia"],
+];
+
+/* Udfold den kompakte liste til rigtige plade-objekter */
+const DEFAULT_ARTIST = {
+  studie: "Michael Jackson",
+  jackson5: "The Jackson 5",
+  jacksons: "The Jacksons",
+  duet: "Michael Jackson",
+};
+
+function singleSlug(title) {
+  return "s-" + title.toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function defaultLabel(category, year) {
+  if (category === "jackson5") return year <= 1976 ? "Motown" : "Epic";
+  if (category === "studie") return year <= 1975 ? "Motown" : "Epic";
+  return "Epic";
+}
+
+const SINGLES = SINGLES_RAW.map(([title, year, category, price, desc, artist, label]) => ({
+  id: singleSlug(title),
+  title,
+  year,
+  category,
+  price,
+  format: "single",
+  artist: artist || DEFAULT_ARTIST[category],
+  label: label || defaultLabel(category, year),
+  wiki: title,
+  desc: desc || `${artist || DEFAULT_ARTIST[category]} udgav den som single i ${year}.`,
+}));
+
+/* Albummene ovenfor er alle LP'er; singlerne lægges til samme liste,
+   så filtre, søgning og milepæle virker på tværs af formater. */
+for (const a of ALBUMS) a.format = a.format || "lp";
+ALBUMS.push(...SINGLES);

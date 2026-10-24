@@ -158,10 +158,11 @@ async function resolveCovers(albums, onUpdate) {
 function coverFallbackHTML(album) {
   const hue = [...album.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
   const cat = CATEGORIES[album.category];
+  const isSingle = album.format === "single";
   return `
-    <div class="cover-fallback" style="--h:${hue}; --cat:${cat.color}">
+    <div class="cover-fallback ${isSingle ? "cf-single" : ""}" style="--h:${hue}; --cat:${cat.color}">
       <div class="cf-sleeve">
-        <div class="cf-vinyl"><div class="cf-label-dot"></div></div>
+        <div class="cf-vinyl"><div class="cf-label-dot">${isSingle ? `<span class="cf-hole"></span>` : ""}</div></div>
         <div class="cf-text">
           <span class="cf-title">${escapeHTML(album.title)}</span>
           <span class="cf-year">${album.year}</span>
